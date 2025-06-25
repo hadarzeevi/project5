@@ -1,0 +1,2 @@
+http://malicious-site.com
+www.bad.com

@@ -1,0 +1,224 @@
+.compose-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.55); 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+.compose-modal {
+  font-family: 'Inter', sans-serif;
+  color: #111827;
+  border-radius: 0.75rem;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 44rem;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s;
+  overflow-x: hidden; 
+  overflow-y: auto;
+  position: relative;
+  z-index: 10000;
+  background-color: #fff;
+}
+
+
+.compose-modal.light {
+  background-color: #fff;
+}
+
+.compose-modal.dark {
+  background-color: #232323;
+}
+
+.compose-header{
+  font-family: "Google Sans", Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+  color: rgb(32, 33, 36);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 1rem;
+  font-weight: 300;
+  height: 15px; ;
+  background-color: #e4e3e3;
+}
+
+.dark .compose-header {
+  background-color: #444c56;
+}
+.compose-footer {
+  font-family: "Google Sans", Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+  color: rgb(32, 33, 36);
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1.5rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 1rem;
+  font-weight: 500;
+  height: 20px; 
+  justify-content: flex-end;
+}
+
+.compose-modal.dark .compose-header,
+.compose-modal.dark .compose-footer {
+  border-color: #444c56;
+}
+
+.compose-title {
+  font-family: "Google Sans", Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 500; 
+  color: #111827;
+}
+
+.compose-modal.dark .compose-title {
+  color: #f3f4f6;
+}
+
+.icon-button {
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.25s ease, transform 0.15s ease;
+}
+
+.light .icon-button:hover {
+  background-color: #e5e7eb;
+  transform: scale(1.1);
+}
+
+.dark .icon-button:hover {
+  background-color: #4b5563;
+  transform: scale(1.1);
+}
+
+.compose-body {
+  flex: 1;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.compose-input,
+.compose-textarea {
+  width: 95%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 0.75rem;
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.compose-input:focus,
+.compose-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+  background-color: #f9fafb;
+}
+
+.compose-textarea {
+  height: 16rem;
+  resize: none;
+}
+
+.compose-modal.dark .compose-input,
+.compose-modal.dark .compose-textarea {
+  background-color: #2f3640;
+  color: #e4e6eb;
+  border-color: #4b5563;
+}
+
+.compose-modal.dark .compose-input::placeholder,
+.compose-modal.dark .compose-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.compose-modal.dark .compose-input:focus,
+.compose-modal.dark .compose-textarea:focus {
+  background-color: #3a4250;
+  border-color: #2563eb;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
+}
+
+.footer-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.compose-close-btn:hover {
+  background-color: #f1f3f4;
+  transform: scale(1.05);
+}
+
+.cancel-button {
+  padding: 0.55rem 1.25rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 0.75rem;
+  background: none;
+  color: #374151;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.15s ease;
+}
+
+.cancel-button:hover {
+  background-color: #f3f4f6;
+  transform: scale(1.05);
+}
+
+.compose-modal.dark .cancel-button {
+  border-color: #5a6174;
+  color: #cbd5e1;
+}
+
+.compose-modal.dark .cancel-button:hover {
+  background-color: #3e4554;
+}
+
+.send-button {
+  padding: 0.55rem 1.25rem;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background-color 0.3s ease, transform 0.15s ease;
+}
+
+.send-button:hover {
+  background-color: #1d4ed8;
+  transform: scale(1.05);
+}
+.attach-button {
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+
+.send-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.send-button:disabled:hover {
+  background-color: #9ca3af;
+  transform: none;
+}

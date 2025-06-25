@@ -1,0 +1,94 @@
+/* AttachmentsList.css */
+
+.attachments-section {
+  margin-bottom: 1rem;
+}
+
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: #f9fafb;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #fff;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  transition: box-shadow 0.2s ease;
+}
+
+.attachment-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.attachment-name {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.attachment-size {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.remove-attachment {
+  padding: 0.25rem;
+  color: #6b7280;
+  border: none;
+  background: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-attachment:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+  transform: scale(1.1);
+}
+
+/* dark mode */
+.attachments-section.dark .attachments-list {
+  background-color: #2f3640;
+  border-color: #4b5563;
+}
+
+.attachments-section.dark .attachment-item {
+  background-color: #3a4250;
+  border-color: #4b5563;
+}
+
+.attachments-section.dark .attachment-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.attachments-section.dark .attachment-name {
+  color: #e4e6eb;
+}
+
+.attachments-section.dark .attachment-size {
+  color: #9ca3af;
+}
+
+.attachments-section.dark .remove-attachment {
+  color: #9ca3af;
+}
+
+.attachments-section.dark .remove-attachment:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.15);
+}

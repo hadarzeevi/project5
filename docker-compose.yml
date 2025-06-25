@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  blacklist:
+    build:
+      context: ./Part1/project2/src
+      dockerfile: Dockerfile
+    container_name: blacklist
+    ports:
+      - "8080:8080"
+    networks:
+      - shared-net
+
+  nodeapp:
+    build:
+      context: ./Part1/project3
+    container_name: nodeapp
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./Part1/project3/uploads:/app/uploads
+    depends_on:
+      - blacklist
+    networks:
+      - shared-net
+
+  frontend:
+    build:
+      context: ./Part2/project4/client
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - nodeapp
+    networks:
+      - shared-net
+
+networks:
+  shared-net:
+    driver: bridge

@@ -1,0 +1,366 @@
+/* Root and mode styles */
+.mail-home {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  transition: background-color 0.3s ease;
+  background-color: #f9fafb; /* light background */
+  color: #111827;
+}
+
+.mail-home.dark {
+  background-color: #1f2937; /* dark background */
+  color: #f3f4f6;
+}
+
+/* Header */
+.header {
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  padding: 0.1rem 1rem;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.mail-home.dark .header {
+  background-color: #374151;
+  border-color: #4b5563;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.left-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.menu-btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #d1d5db;
+  background-color: transparent;
+  cursor: pointer;
+  color: #1f2937;
+  transition: background-color 0.3s ease;
+}
+
+.dark .menu-btn {
+  color: #f9fafb; 
+}
+
+.menu-btn:hover {
+  background-color: #f9fafb; 
+  border-color: #9ca3af; 
+}
+
+.mail-home.dark .menu-btn {
+  border: none;
+}
+
+.mail-home.dark .menu-btn:hover {
+  background-color: #4b5563;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Poppins', sans-serif; 
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.logo-image {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.logo-text {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.9rem;
+  color: #1a1a1a;
+}
+
+.mail-home.dark .logo-text {
+  color: #f9fafb;
+}
+
+.mail-home.dark .logo {
+  color: #f9fafb;
+}
+
+/* Search */
+.search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 600px; 
+  width: 100%;
+  margin: 0 auto; 
+}
+
+.search-icon {
+  font-size: 1rem; 
+  color: #9ca3af;
+}
+.search-icon:hover {
+  color:#ab9caf ; 
+  background-color: transparent;
+}
+.search-icon-button:focus,
+.search-icon-button:active {
+  background-color: transparent !important;
+  outline: none;
+  box-shadow: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 1rem 0.5rem 2.5rem;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.mail-home.dark .search-input {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: #f9fafb;
+}
+
+.mail-home.dark .search-input::placeholder {
+  color: #6b7280;
+}
+
+/* Right header buttons */
+.right-header {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  width: fit-content;
+}
+
+.icon-btn {
+  all: unset; 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  border-radius: 9999px;
+  padding: 0.5rem; 
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.mail-home.dark .icon-btn:hover {
+  background-color: #4b5563;
+}
+
+.user-avatar {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  border-radius: 9999px;
+  padding: 0.5rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.user-avatar img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+}
+
+.user-avatar:hover{
+  background-color:transparent;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  width: 100vw;
+
+}
+
+.search-icon-button {
+ all: unset; 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; 
+  height: 24px;
+  cursor: pointer;
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background-color: transparent;
+}
+.search-icon-button:hover {
+  background-color: transparent;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  padding: 1rem;
+  min-width: 220px;
+  color: #333;
+}
+
+.dark .user-dropdown {
+  background-color: #1f1f1f;
+  border-color: #444;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+  color: #eee;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+.user-details {
+  display: flex;
+  flex-direction: column;
+  margin-left: 0.75rem;
+}
+
+
+.user-details h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: #111;
+}
+
+.user-details p {
+  font-family: 'Inter', sans-serif;  
+  font-size: 0.875rem;
+  color: #111;
+  margin: 0.25rem 0 0;
+}
+.dark .user-details h3 {
+  color: #ffffff;
+}
+.dark .user-details p {
+  color: #ffffff;
+}
+
+.user-menu-items {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1rem;
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.9rem;
+  color: #333;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  border-radius: 6px;
+}
+
+.user-menu-item:hover {
+  background-color: #f1f3f4;
+}
+
+.user-menu-item svg {
+  color: #555;
+}
+
+.user-menu-item.logout {
+  color: #d93025;
+}
+
+.user-menu-item.logout:hover {
+  background-color: #fce8e6;
+}
+
+.dark .user-menu-item {
+  color: #eee;
+}
+
+.dark .user-menu-item:hover {
+  background-color: #333;
+}
+
+.dark .user-menu-item svg {
+  color: #ccc;
+}
+
+.dark .user-menu-item.logout {
+  color: #f28b82;
+}
+
+.dark .user-menu-item.logout:hover {
+  background-color: #3c2c2b;
+}
+
+.user-menu-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}

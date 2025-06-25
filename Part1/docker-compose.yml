@@ -1,0 +1,26 @@
+services:
+  blacklist:
+    build:
+      context: ./project2/src
+    container_name: blacklist
+    ports:
+      - "8080:8080"  # Exposing port 8080 for the blacklist service
+    networks:
+      - shared-net
+
+  nodeapp:
+    build:
+      context: ./project3
+    container_name: nodeapp
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./project3/uploads:/app/uploads
+    depends_on:
+      - blacklist
+    networks:
+      - shared-net
+      
+networks:
+  shared-net:
+    external: true        # כי את משתמשת ברשת משותפת עם קונטיינרים אחרים
