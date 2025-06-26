@@ -1,107 +1,136 @@
-const Emails = require('../models/mails');
-const Users = require('../models/users');
+const Email = require('../models/mails');
+const User = require('../models/users');
 
-// Get the 50 most recent emails related to the user
-// exports.get50Emails = (req, res) => {
-//   const userId = req.user.userId; 
-//   const relaventEmails = Emails.emails
-//     .filter(e => e.from === userId || e.to === userId)
-//     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-//     .slice(0, 50);
+// Get the 50 most recent emails related to the user with pagination
+exports.get50Emails = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = 50;
 
-//     res.json(relaventEmails);
-// };
-exports.get50Emails = (req, res) => {
-  const userId = req.user.userId;
-  const page = parseInt(req.query.page) || 1;
-  const pageSize = 50;
+    const skip = (page - 1) * pageSize;
 
-  const allRelevantEmails = Emails.emails
-    .filter(e => e.from === userId || e.to === userId)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const allRelevantEmails = await Email.find({
+      $or: [
+        { from: userId },
+        { to: userId }
+      ]
+    })
+    .sort({ timestamp: -1 })
+    .skip(skip)
+    .limit(pageSize)
+    .populate('from', 'mail username')
+    .populate('to', 'mail username');
 
-  const totalEmails = allRelevantEmails.length;
-  const totalPages = Math.ceil(totalEmails / pageSize);
+    const totalEmails = await Email.countDocuments({
+      $or: [
+        { from: userId },
+        { to: userId }
+      ]
+    });
 
-  // חיתוך לפי עמוד
-  const startIndex = (page - 1) * pageSize;
-  const paginatedEmails = allRelevantEmails.slice(startIndex, startIndex + pageSize);
+    const totalPages = Math.ceil(totalEmails / pageSize);
 
-  res.json({
-    mails: paginatedEmails,
-    totalPages,
-    currentPage: page,
-  });
+    res.json({
+      mails: allRelevantEmails,
+      totalPages,
+      currentPage: page,
+    });
+  } catch (error) {
+    console.error('Error fetching emails:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
 // Get a single email by ID
-exports.getMail = (req, res) => {
-  const id = req.params.id;
-  const mail = Emails.getMail(id);
-  if (mail) {
-    if (mail.from !== req.user.id && mail.to !== req.user.id) {
-       return res.status(403).json({ error: "Access denied" });
-  }
+exports.getMail = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const mail = await Email.findById(id)
+      .populate('from', 'mail username')
+      .populate('to', 'mail username');
+
+    if (!mail) {
+      return res.status(404).json({ error: "Mail not found" });
+    }
+
+    if (!mail.from._id.equals(req.user.userId) && !mail.to._id.equals(req.user.userId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     res.status(200).json(mail);
-  } else {
-    res.status(404).json({ error: "Mail not found" });
+  } catch (error) {
+    console.error('Error fetching mail:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // Update certain fields in a specific email
-exports.patchMail = (req, res) => {
-  //header
-  const userId = req.user.userId;
-  const id = req.params.id;
-  const mail = Emails.getMail(id); 
+exports.patchMail = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const id = req.params.id;
 
-  if (!mail) {
-    return res.status(404).json({ error: "Mail not found" });
-  }
-  if (mail.from !== userId && mail.to !== userId) {
-  return res.status(403).json({ error: "Access denied" });
-}
+    const mail = await Email.findById(id);
 
-  // change body
-  const allowedFields = ['subject', 'body', 'isRead', 'link', 'category', 'isStarred', 'previousCategory', 'label'];
-  for (const field of allowedFields) {
-    if (req.body[field] !== undefined) {
-      mail[field] = req.body[field];
+    if (!mail) {
+      return res.status(404).json({ error: "Mail not found" });
     }
-  }
-  //save changes
-  Emails.patchMail(id, mail); 
 
-  res.status(200).json();
-};
-
-// Delete a specific email
-exports.deleteMail = (req, res) => {
-  //header
-  const userId = req.user.userId;
-  const id = req.params.id;
-  const mail = Emails.getMail(id); 
-
-  if (!mail) {
-    return res.status(404).json({ error: "Mail not found" });
-  }
-   if (mail.from !== userId && mail.to !== userId) {
+    if (!mail.from.equals(userId) && !mail.to.equals(userId)) {
       return res.status(403).json({ error: "Access denied" });
     }
 
-  //save changes
-  Emails.deleteMail(id); 
+    const allowedFields = ['subject', 'body', 'isRead', 'link', 'category', 'isStarred', 'previousCategory', 'label'];
+    const updateData = {};
 
-  res.status(204).json();
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    }
+
+    await Email.findByIdAndUpdate(id, updateData, { new: true });
+
+    res.status(200).json({ message: 'Mail updated successfully' });
+  } catch (error) {
+    console.error('Error updating mail:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
+
+// Delete a specific email
+exports.deleteMail = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const id = req.params.id;
+
+    const mail = await Email.findById(id);
+
+    if (!mail) {
+      return res.status(404).json({ error: "Mail not found" });
+    }
+
+    if (!mail.from.equals(userId) && !mail.to.equals(userId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    await Email.findByIdAndDelete(id);
+
+    res.status(204).json();
+  } catch (error) {
+    console.error('Error deleting mail:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // Send a new email
 exports.postMail = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = Users.getUser(userId);
+    const user = await User.findById(userId);
     const { sendTo, subject, body, isSpam, category } = req.body;
 
-    // בדיקות בסיסיות
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -110,35 +139,35 @@ exports.postMail = async (req, res) => {
       return res.status(400).json({ error: "Missing subject or body" });
     }
 
-    // ננסה למצוא את המקבל אם נשלח
-    const recipient = sendTo ? Users.getUserByMail(sendTo) : null;
+    let recipient = null;
+    if (sendTo) {
+      recipient = await User.findOne({ mail: sendTo });
+    }
 
     const preview = body.substring(0, 20) + '...';
 
     // אם זו טיוטה
     if (category === 'drafts') {
-      const DraftMail = {
-        id: Emails.emails.length + 1,
+      const draftMail = new Email({
         ownerId: userId,
         from: userId,
         fromMail: user.mail,
-        to: recipient ? recipient.id : null,
+        to: recipient ? recipient._id : null,
         toMail: recipient ? recipient.mail : '',
         subject,
         body,
-        timestamp: new Date().toISOString(),
         preview,
         isRead: true,
         category: 'drafts',
         previousCategory: 'drafts',
         isStarred: false,
-      };
+      });
 
-      Emails.addMail(DraftMail);
-      return res.status(201).json(DraftMail);
+      const savedDraft = await draftMail.save();
+      return res.status(201).json(savedDraft);
     }
 
-    // אם זו שליחה רגילה — נוודא שכתובת תקינה
+    // אם זו שליחה רגילה
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(sendTo)) {
       return res.status(400).json({ error: "Invalid email format" });
@@ -148,99 +177,117 @@ exports.postMail = async (req, res) => {
       return res.status(404).json({ error: 'Recipient user not found' });
     }
 
-    const SentMail = {
-      id: Emails.emails.length + 1,
+    // יצירת המייל הנשלח
+    const sentMail = new Email({
       ownerId: userId,
       from: userId,
       fromMail: user.mail,
-      to: recipient.id,
+      to: recipient._id,
       toMail: recipient.mail,
       subject,
       body,
-      timestamp: new Date().toISOString(),
       preview,
       isRead: true,
       category: 'sent',
       previousCategory: 'sent',
       isStarred: false,
       label: [],
-    };
+    });
 
-    const InboxMail = {
-      id: Emails.emails.length + 2,
-      ownerId: recipient.id,
+    // יצירת המייל שמגיע לתיבת הדואר נכנס
+    const inboxMail = new Email({
+      ownerId: recipient._id,
       from: userId,
       fromMail: user.mail,
-      to: recipient.id,
+      to: recipient._id,
       toMail: recipient.mail,
       subject,
       body,
-      timestamp: new Date().toISOString(),
       preview,
       isRead: false,
       category: category || (isSpam ? 'spam' : 'inbox'),
       previousCategory: 'inbox',
       isStarred: false,
       label: [],
-    };
+    });
 
-    Emails.addMail(SentMail);
-    Emails.addMail(InboxMail);
+    await sentMail.save();
+    await inboxMail.save();
 
-    console.log(Emails.emails.map(m => ({
-      id: m.id,
-      ownerId: m.ownerId,
-      category: m.category,
-      subject: m.subject
-    })));
-
-    return res.status(201).json(SentMail); // מחזירים את המייל שנשלח
-  } catch (err) {
-    console.error("Error in postMail:", err);
+    return res.status(201).json(sentMail);
+  } catch (error) {
+    console.error("Error in postMail:", error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-
 // Search emails by query string
-exports.searchEmails = (req, res) => {
-  const userId = req.user.userId;
-  const query = req.params.query;
-  if (!query) {
-    return res.status(400).json({ error: 'Query parameter is required' });
+exports.searchEmails = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const query = req.params.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameter is required' });
+    }
+
+    const results = await Email.find({
+      $and: [
+        {
+          $or: [
+            { from: userId },
+            { to: userId }
+          ]
+        },
+        {
+          $or: [
+            { subject: { $regex: query, $options: 'i' } },
+            { body: { $regex: query, $options: 'i' } },
+            { fromMail: { $regex: query, $options: 'i' } }
+          ]
+        }
+      ]
+    })
+    .populate('from', 'mail username')
+    .populate('to', 'mail username')
+    .sort({ timestamp: -1 });
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error('Error searching emails:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  const results = Emails.search(query);
-  res.status(200).json(results);
 };
 
-exports.toggleLabelOnMail = (req, res) => {
-  const userId = req.user.userId;
-  const mailId = parseInt(req.params.id);
-  const labelId = parseInt(req.body.labelId);
-  const shouldAdd = req.body.shouldAdd;
+// Toggle label on mail
+exports.toggleLabelOnMail = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const mailId = req.params.id;
+    const labelId = req.body.labelId;
+    const shouldAdd = req.body.shouldAdd;
 
-  const mail = Emails.getMail(mailId);
-  if (!mail) {
-    return res.status(404).json({ error: "Mail not found" });
-  }
-
-  if (mail.ownerId !== userId) {
-    return res.status(403).json({ error: "Access denied" });
-  }
-
-  // ודא שיש לו את השדה labeldId
-  if (!Array.isArray(mail.labelId)) {
-    mail.labelId = [];
-  }
-
-  if (shouldAdd) {
-    if (!mail.labelId.includes(labelId)) {
-      mail.labelId.push(labelId);
+    const mail = await Email.findById(mailId);
+    if (!mail) {
+      return res.status(404).json({ error: "Mail not found" });
     }
-  } else {
-    mail.labelId = mail.labelId.filter(id => id !== labelId);
-  }
 
-  Emails.patchMail(mailId, mail);
-  res.status(200).json({ message: `Label ${shouldAdd ? 'added' : 'removed'} successfully` });
+    if (!mail.ownerId.equals(userId)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (shouldAdd) {
+      if (!mail.labelId.includes(labelId)) {
+        mail.labelId.push(labelId);
+      }
+    } else {
+      mail.labelId = mail.labelId.filter(id => !id.equals(labelId));
+    }
+
+    await mail.save();
+    res.status(200).json({ message: `Label ${shouldAdd ? 'added' : 'removed'} successfully` });
+  } catch (error) {
+    console.error('Error toggling label:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
