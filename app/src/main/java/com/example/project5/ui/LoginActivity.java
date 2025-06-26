@@ -30,8 +30,10 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d("LOGIN_DEBUG", "1");
 
         super.onCreate(savedInstanceState);
+        Log.d("LOGIN_DEBUG", "2!");
 
         setContentView(R.layout.activity_login);
         emailEditText = findViewById(R.id.emailEditText);
@@ -49,7 +51,11 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
         signInButton.setOnClickListener(v -> login());
-
+        TextView registerText = findViewById(R.id.registerText);
+        registerText.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+            startActivity(intent);
+        });
     }
     private void verifyEmail() {
         userEmail = emailEditText.getText().toString().trim();
