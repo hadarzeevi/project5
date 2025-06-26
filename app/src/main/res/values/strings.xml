@@ -1,3 +1,24 @@
 <resources>
     <string name="app_name">project5</string>
+    <string name="next">Next</string>
+    <string name="sign_in">Sign in</string>
+    <string name="enter_your_email">Enter your email</string>
+    <string name="enter_your_password">Enter your password</string>
+    <string name="show_password">Show password</string>
+    <string name="google_logo">Google Logo</string>
+    <string name="gmail_logo" />
+    <string name="gmail">Gmail</string>
+    <string name="just_a_few_more_details">Just a few more details</string>
+    <string name="birth_date">Birth Date</string>
+    <string name="back">Back</string>
+    <string name="create_your_google_account">Create your Google Account</string>
+    <string name="first_name">First name</string>
+    <string name="last_name">Last name</string>
+    <string name="username">Username</string>
+    <string name="don_t_have_an_account_sign_up">Don\'t have an account? Sign up</string>
+    <string-array name="gender_array">
+        <item>Select Gender</item>
+        <item>Male</item>
+        <item>Female</item>
+    </string-array>
 </resources>
