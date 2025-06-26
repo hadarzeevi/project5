@@ -20,10 +20,9 @@ public class EntryActivity extends AppCompatActivity {
 
         btnSignIn.setOnClickListener(view -> {
             Log.d("ENTRY_DEBUG", "Button clicked!");
-            Toast.makeText(this, "עובר ל-LoginActivity...", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(EntryActivity.this, LoginActivity.class);
             startActivity(intent);
-//            finish();
+            finish();
         });
     }
 }

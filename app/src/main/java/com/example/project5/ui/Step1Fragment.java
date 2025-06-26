@@ -38,7 +38,6 @@ public class Step1Fragment extends Fragment {
         btnNext = view.findViewById(R.id.btnNext);
         tvError = view.findViewById(R.id.tvError);
 
-        // אם יש ערכים קיימים (חוזרים אחורה) נטען אותם
         if (parentActivity.firstName != null) etFirstName.setText(parentActivity.firstName);
         if (parentActivity.lastName != null) etLastName.setText(parentActivity.lastName);
         if (parentActivity.username != null) etUsername.setText(parentActivity.username);

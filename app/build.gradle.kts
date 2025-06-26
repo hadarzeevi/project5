@@ -41,6 +41,8 @@ android {
 
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0") // ← הוספת ספריית CoordinatorLayout
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

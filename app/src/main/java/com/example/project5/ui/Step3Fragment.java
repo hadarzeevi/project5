@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -32,6 +33,7 @@ public class Step3Fragment extends Fragment {
     ImageView ivProfile;
     Button btnUpload, btnBack, btnRegister;
     Uri imageUri;
+    TextView tvError;
 
     private static final int PICK_IMAGE_REQUEST = 1;
 
@@ -90,17 +92,17 @@ public class Step3Fragment extends Fragment {
         String confirm = etConfirm.getText().toString();
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            Toast.makeText(getContext(), "Invalid email", Toast.LENGTH_SHORT).show();
+            showError("Invalid email");
             return;
         }
 
         if (pass.length() < 8 || !pass.matches(".[0-9].")) {
-            Toast.makeText(getContext(), "Password must be at least 8 characters and contain a number", Toast.LENGTH_SHORT).show();
+            showError("Password must be at least 8 characters and contain a number");
             return;
         }
 
         if (!pass.equals(confirm)) {
-            Toast.makeText(getContext(), "Passwords do not match", Toast.LENGTH_SHORT).show();
+            showError("Passwords do not match");
             return;
         }
 
@@ -199,5 +201,9 @@ public class Step3Fragment extends Fragment {
             out.write(buffer, 0, bytesRead);
         }
         out.writeBytes("\r\n");
+    }
+    private void showError(String msg) {
+        tvError.setText(msg);
+        tvError.setVisibility(View.VISIBLE);
     }
 }
