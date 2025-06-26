@@ -1,42 +1,83 @@
-let emails = [];
+const mongoose = require('mongoose');
 
-// Returns an email by its ID
-const getMail = (id) => emails.find(mail => mail.id == id);
-
-// Adds a new email to the array
-const addMail = (mail) => emails.push(mail);
-
-// Updates an existing email by ID
-const patchMail = (id, updatedMail) => {
-    const index = emails.findIndex(mail => mail.id == id);
-    if (index !== -1) {
-        emails[index] = updatedMail;
-    }
-};
-
-// Deletes an email by ID
-const deleteMail = (id) => {
-  const index = emails.findIndex(mail => mail.id == id);
-  if (index !== -1) {
-    emails.splice(index, 1); // deletes the mail from the array
+const emailSchema = new mongoose.Schema({
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  from: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  fromMail: {
+    type: String,
+    required: true
+  },
+  to: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  toMail: {
+    type: String,
+    default: ''
+  },
+  subject: {
+    type: String,
+    required: true
+  },
+  body: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  preview: {
+    type: String,
+    default: ''
+  },
+  isRead: {
+    type: Boolean,
+    default: false
+  },
+  category: {
+    type: String,
+    enum: ['inbox', 'sent', 'drafts', 'spam', 'trash'],
+    default: 'inbox'
+  },
+  previousCategory: {
+    type: String,
+    enum: ['inbox', 'sent', 'drafts', 'spam', 'trash'],
+    default: 'inbox'
+  },
+  isStarred: {
+    type: Boolean,
+    default: false
+  },
+  labelId: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Label'
+  }],
+  label: [{
+    type: String
+  }],
+  link: {
+    type: String,
+    default: ''
   }
-};
+}, {
+  timestamps: true
+});
 
-// Searches emails by a text query in subject, body, or from fields
-function search(query) {
-  return emails.filter(mail =>
-    (typeof mail.subject === 'string' && mail.subject.includes(query)) ||
-    (typeof mail.body === 'string' && mail.body.includes(query)) ||
-    (typeof mail.from === 'string' && mail.from.includes(query))
-  );
-}
+// indexes for efficient querying
+emailSchema.index({ ownerId: 1, timestamp: -1 });
+emailSchema.index({ from: 1, to: 1 });
+emailSchema.index({ category: 1 });
+emailSchema.index({ subject: 'text', body: 'text' });
 
-module.exports = { 
-    emails,
-    getMail,
-    patchMail,
-    addMail,
-    deleteMail,
-    search,
-    
-};
+const Email = mongoose.model('Email', emailSchema);
+
+module.exports = Email;

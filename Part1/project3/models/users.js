@@ -1,57 +1,107 @@
-let nextId = 1;
+const mongoose = require('mongoose');
 
-const users = [];
-
-// Returns user by ID (without password)
-const getUser = (id) => {
-  const user =  users.find((user) => user.id == id);
-  if (!user) return undefined; 
-  const { password, ...userWithoutPassword } = user;
-  return userWithoutPassword;
-};
-
-// Returns user ID by email, or null if not found
-const getUserIDByEmail = (email) => {
-  const user = users.find(u => u.mail === email);
-  if (!user) {
-    return null; 
+const userSchema = new mongoose.Schema({
+  first_name: {
+    type: String,
+    required: true,
+    minlength: 2,
+    validate: {
+      validator: function(v) {
+        return /^[A-Za-zא-ת]{2,}$/.test(v);
+      },
+      message: 'First name must contain at least 2 letters and only letters'
+    }
+  },
+  last_name: {
+    type: String,
+    required: true,
+    minlength: 2,
+    validate: {
+      validator: function(v) {
+        return /^[A-Za-zא-ת]{2,}$/.test(v);
+      },
+      message: 'Last name must contain at least 2 letters and only letters'
+    }
+  },
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  mail: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    validate: {
+      validator: function(v) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+      },
+      message: 'Invalid email format'
+    }
+  },
+  birth_date: {
+    type: Date,
+    required: true
+  },
+  gender: {
+    type: String,
+    required: true,
+    enum: ['male', 'female'],
+    lowercase: true
+  },
+  password: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(v);
+      },
+      message: 'Password must be at least 8 characters long and contain letters and numbers'
+    }
+  },
+  reWritePass: {
+    type: String,
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v === this.password;
+      },
+      message: 'Passwords do not match'
+    }
+  },
+  profileImage: {
+    type: String,
+    default: "https://example.com/default-profile-picture.png"
   }
-  return user.id;
+}, {
+  timestamps: true
+});
+
+// מתודה להחזרת משתמש ללא סיסמה
+userSchema.methods.toSafeObject = function() {
+  const user = this.toObject();
+  delete user.password;
+  delete user.reWritePass;
+  return user;
 };
 
-const getUserByUsername = (username) => {
-  return users.find(user =>
-    user.username.localeCompare(username, undefined, { sensitivity: 'base' }) === 0
-  );
+// מתודה סטטית לחיפוש משתמש לפי אימייל (case-insensitive)
+userSchema.statics.findByEmail = function(email) {
+  return this.findOne({ mail: new RegExp(`^${email}$`, 'i') });
 };
 
-// Adds a new user and assigns a unique ID
-const addUser = (user) => {
-  user.id = nextId++;
-  users.push(user);
+// מתודה סטטית לחיפוש משתמש לפי שם משתמש (case-insensitive)
+userSchema.statics.findByUsername = function(username) {
+  return this.findOne({ username: new RegExp(`^${username}$`, 'i') });
 };
 
-// Authenticates user by email and password
-const findUser = (mail, password) => {
-  return users.find((u) =>
-    u.mail === mail &&
-    u.password === password
-  );
+// מתודה סטטית לאימות משתמש
+userSchema.statics.authenticate = function(email, password) {
+  return this.findOne({ mail: new RegExp(`^${email}$`, 'i'), password: password });
 };
 
-// Returns user by email (case-insensitive)
-const getUserByMail = (mail) => {
-  return users.find(user =>
-    user.mail.localeCompare(mail, undefined, { sensitivity: 'base' }) === 0
-  );
-};
+const User = mongoose.model('User', userSchema);
 
-module.exports = {
-  users,
-  getUser,
-  addUser,
-  findUser,
-  getUserIDByEmail,
-  getUserByMail,
-  getUserByUsername
-};
+module.exports = User;
