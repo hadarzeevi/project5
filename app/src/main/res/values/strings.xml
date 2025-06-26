@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">project5</string>
+    <string name="next">Next</string>
+    <string name="sign_in">Sign in</string>
+    <string name="Enter_your_email">Enter your email</string>
+    <string name="Enter_your_password">Enter your password</string>
+    <string name="Show_password">Show password</string>
+    <string name="google_logo">Google Logo</string>
 </resources>
