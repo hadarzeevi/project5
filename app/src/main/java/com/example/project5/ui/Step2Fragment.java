@@ -82,7 +82,7 @@ public class Step2Fragment extends Fragment {
                 return;
             }
 
-            if (gender.isEmpty()) {
+            if (gender.equals("Select Gender")) {
                 showError("Gender is required");
                 return;
             }

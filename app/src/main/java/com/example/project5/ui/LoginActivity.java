@@ -8,6 +8,7 @@ import android.text.InputType;
 import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
+import android.view.ViewStructure;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -27,7 +28,7 @@ public class LoginActivity extends AppCompatActivity {
     private CheckBox showPasswordCheckbox;
     private OkHttpClient client = new OkHttpClient();
     private String userEmail;
-
+    TextView tvError;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d("LOGIN_DEBUG", "1");
@@ -60,7 +61,7 @@ public class LoginActivity extends AppCompatActivity {
     private void verifyEmail() {
         userEmail = emailEditText.getText().toString().trim();
         if (!Patterns.EMAIL_ADDRESS.matcher(userEmail).matches()) {
-            Toast.makeText(this, "Invalid email address", Toast.LENGTH_SHORT).show();
+            showError("Invalid email address");
             return;
         }
 
@@ -164,7 +165,7 @@ public class LoginActivity extends AppCompatActivity {
                                 .apply();
 
                         // מעבר למסך הראשי
-                        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                        Intent intent = new Intent(LoginActivity.this, MailHomeActivity.class);
                         startActivity(intent);
                         finish();
                     } else {
@@ -176,5 +177,9 @@ public class LoginActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    private void showError(String msg) {
+        tvError.setText(msg);
+        tvError.setVisibility(View.VISIBLE);
     }
 }

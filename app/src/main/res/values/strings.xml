@@ -16,6 +16,13 @@
     <string name="last_name">Last name</string>
     <string name="username">Username</string>
     <string name="don_t_have_an_account_sign_up">Don\'t have an account? Sign up</string>
+    <string name="menu">Menu</string>
+    <string name="user_menu">User Menu</string>
+    <string name="search_in_mail">Search in mail</string>
+    <string name="compose">Compose</string>
+    <string name="labels">Labels</string>
+    <string name="add_label">Add label</string>
+    <string name="delete_label">Delete label</string>
     <string-array name="gender_array">
         <item>Select Gender</item>
         <item>Male</item>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9FAFB">
+
+    <!-- תוכן המסך (סרגל עליון) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:orientation="horizontal"
+        android:background="@drawable/search_bar_bg"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/ivMenu"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_menu"
+            android:layout_marginEnd="10dp"
+            android:layout_marginStart="12dp" />
+
+        <TextView
+            android:id="@+id/tvSearchPlaceholder"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/search_in_mail"
+            android:textSize="16sp"
+            android:textColor="#444"
+            android:gravity="start" />
+
+        <ImageView
+            android:id="@+id/ivAvatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_avatar"
+            android:background="@drawable/circle_mask"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="12dp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnComposeFloating"
+        android:layout_width="150dp"
+        android:layout_height="80dp"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:background="@drawable/compose_button_bg"
+        android:text="@string/compose"
+        android:textColor="@color/blue"
+        android:drawableStart="@drawable/ic_pencil"
+        android:drawablePadding="8dp"
+        android:padding="12dp"
+        android:elevation="6dp"
+        android:textStyle="bold"
+        android:textSize="16sp"/>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

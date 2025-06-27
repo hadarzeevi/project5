@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sidebar"
+    android:layout_width="150dp"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF"
+    android:padding="8dp"
+    android:elevation="4dp">
+
+    <!-- Compose Button -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="start|center_vertical"
+        android:padding="8dp"
+        android:layout_marginBottom="12dp">
+
+        <ImageView
+            android:id="@+id/gmailLogo"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/gmail_logo"
+            android:contentDescription="Gmail Logo"
+            android:adjustViewBounds="true" />
+
+        <TextView
+            android:id="@+id/gmailText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Gmail"
+            android:textSize="20sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/categoryContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="16dp">
+
+        <Button
+            android:id="@+id/btnInbox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Inbox"
+            android:drawableStart="@drawable/ic_inbox"
+            android:gravity="start|center_vertical"
+            android:drawablePadding="5dp"
+
+            android:background="@android:color/transparent"
+            android:textColor="#5f6368"
+            android:paddingStart="15dp" />
+
+        <Button
+            android:id="@+id/btnStarred"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Starred"
+            android:drawableStart="@drawable/ic_star"
+            android:gravity="start|center_vertical"
+            android:drawablePadding="5dp"
+            android:background="@android:color/transparent"
+            android:textColor="#5f6368"
+            android:paddingStart="15dp" />
+
+        <Button
+            android:id="@+id/btnSent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sent"
+            android:drawableStart="@drawable/ic_send"
+            android:gravity="start|center_vertical"
+            android:drawablePadding="5dp"
+            android:background="@android:color/transparent"
+            android:textColor="#5f6368"
+            android:paddingStart="15dp" />
+
+        <Button
+            android:id="@+id/btnDrafts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Drafts"
+            android:drawableStart="@drawable/ic_draft"
+            android:gravity="start|center_vertical"
+            android:drawablePadding="5dp"
+            android:background="@android:color/transparent"
+            android:textColor="#5f6368"
+            android:paddingStart="15dp" />
+
+        <Button
+            android:id="@+id/btnSpam"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Spam"
+            android:drawableStart="@drawable/ic_report"
+            android:gravity="start|center_vertical"
+            android:drawablePadding="5dp"
+            android:background="@android:color/transparent"
+            android:textColor="#5f6368"
+            android:paddingStart="15dp" />
+
+        <Button
+            android:id="@+id/btnTrash"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Trash"
+            android:drawableStart="@drawable/ic_delete"
+            android:gravity="start|center_vertical"
+            android:drawablePadding="5dp"
+            android:background="@android:color/transparent"
+            android:textColor="#5f6368"
+            android:paddingStart="15dp" />
+    </LinearLayout>
+
+    <!-- Labels Header -->
+    <TextView
+        android:id="@+id/labelHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/labels"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:paddingTop="16dp"
+        android:paddingBottom="4dp"
+        android:textColor="#666" />
+
+    <LinearLayout
+        android:id="@+id/labelContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <!-- Add/Delete Label Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <ImageButton
+            android:id="@+id/btnAddLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_add"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/add_label" />
+
+        <ImageButton
+            android:id="@+id/btnDeleteLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_remove"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/delete_label" />
+    </LinearLayout>
+</LinearLayout>
