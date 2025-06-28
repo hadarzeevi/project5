@@ -3,6 +3,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -44,6 +45,7 @@ public class Step3Fragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+        Log.d("DEBUG", " on create!");
 
         View view = inflater.inflate(R.layout.fragment_step3, container, false);
 
@@ -56,6 +58,7 @@ public class Step3Fragment extends Fragment {
         btnUpload = view.findViewById(R.id.btnUploadImage);
         btnBack = view.findViewById(R.id.btnBack);
         btnRegister = view.findViewById(R.id.btnRegister);
+        tvError = view.findViewById(R.id.tvError);
 
         // טענת ערכים קיימים
         if (parentActivity.email != null) etEmail.setText(parentActivity.email);
@@ -65,7 +68,10 @@ public class Step3Fragment extends Fragment {
 
         btnUpload.setOnClickListener(v -> openImageChooser());
         btnBack.setOnClickListener(v -> parentActivity.goToPreviousStep());
+        Log.d("DEBUG", " go handle!");
+
         btnRegister.setOnClickListener(v -> handleRegister());
+        Log.d("DEBUG", " after handle!");
 
         return view;
     }
@@ -87,6 +93,7 @@ public class Step3Fragment extends Fragment {
     }
 
     private void handleRegister() {
+        tvError.setVisibility(View.GONE);
         String email = etEmail.getText().toString().trim();
         String pass = etPassword.getText().toString();
         String confirm = etConfirm.getText().toString();
@@ -96,30 +103,40 @@ public class Step3Fragment extends Fragment {
             return;
         }
 
-        if (pass.length() < 8 || !pass.matches(".[0-9].")) {
+        if (pass.length() < 8 || !pass.matches(".*\\d.*")) {
             showError("Password must be at least 8 characters and contain a number");
             return;
         }
+        Log.d("DEBUG", " pass!");
 
         if (!pass.equals(confirm)) {
             showError("Passwords do not match");
             return;
         }
+        Log.d("DEBUG", " handle!");
 
         parentActivity.email = email;
         parentActivity.password = pass;
+        Log.d("DEBUG", " before!");
 
         // כאן שולחים את כל הנתונים לשרת (כולל תמונת פרופיל)
         sendRegistrationToServer();
     }
 
     private void sendRegistrationToServer() {
+        Log.d("DEBUG", "start");
+
         new Thread(() -> {
+            Log.d("DEBUG", "thread");
+
             try {
+                Log.d("DEBUG", "try");
+
                 // בנייה של בקשת POST multipart/form-data
                 String boundary = "===" + System.currentTimeMillis() + "===";
-                URL url = new URL("http://localhost:4000/api/users/register");
+                URL url = new URL("http://10.0.2.2:4000/api/users/register");
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                Log.d("DEBUG", "register clicked!");
 
                 connection.setDoOutput(true);
                 connection.setRequestMethod("POST");
@@ -161,15 +178,21 @@ public class Step3Fragment extends Fragment {
                     response.append(inputLine);
                 }
                 in.close();
+                Log.d("DEBUG", "hello" + responseCode);
 
                 if (responseCode == 200) {
+                    Log.d("DEBUG", " if!");
+
                     // הצלחה - חזרה ל-login (ב-UI thread)
                     requireActivity().runOnUiThread(() -> {
                         Toast.makeText(getContext(), "Registration successful!", Toast.LENGTH_SHORT).show();
                         requireActivity().finish();  // סוגר את המסך, או לנווט ל-login
                     });
                 } else {
+                    Log.d("DEBUG", " else!");
                     requireActivity().runOnUiThread(() -> {
+
+
                         Toast.makeText(getContext(), "Registration failed: " + response.toString(), Toast.LENGTH_LONG).show();
                     });
                 }

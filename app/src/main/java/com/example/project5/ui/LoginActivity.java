@@ -31,10 +31,9 @@ public class LoginActivity extends AppCompatActivity {
     TextView tvError;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("LOGIN_DEBUG", "1");
+        Log.d("DEBUG", "1");
 
         super.onCreate(savedInstanceState);
-        Log.d("LOGIN_DEBUG", "2!");
 
         setContentView(R.layout.activity_login);
         emailEditText = findViewById(R.id.emailEditText);
@@ -56,6 +55,7 @@ public class LoginActivity extends AppCompatActivity {
         registerText.setOnClickListener(v -> {
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(intent);
+
         });
     }
     private void verifyEmail() {
