@@ -16,7 +16,7 @@ public class RegisterActivity extends AppCompatActivity {
 
     public String firstName, lastName, username;
     public String birthDate, gender;
-    public String email, password;
+    public String email, password, reWritePassword;
     public Uri profileImageUri;
 
     @Override

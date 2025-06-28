@@ -152,6 +152,8 @@ public class Step3Fragment extends Fragment {
                 writeFormField(request, boundary, "gender", parentActivity.gender);
                 writeFormField(request, boundary, "mail", parentActivity.email);
                 writeFormField(request, boundary, "password", parentActivity.password);
+                writeFormField(request, boundary, "reWritePassword", parentActivity.reWritePassword);
+
 
                 // הוספת תמונת פרופיל אם קיימת
                 if (parentActivity.profileImageUri != null) {
