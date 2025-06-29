@@ -19,7 +19,6 @@ public class EntryActivity extends AppCompatActivity {
         Button btnSignIn = findViewById(R.id.btnSignIn);
 
         btnSignIn.setOnClickListener(view -> {
-            Log.d("ENTRY_DEBUG", "Button clicked!");
             Intent intent = new Intent(EntryActivity.this, LoginActivity.class);
             startActivity(intent);
             finish();
