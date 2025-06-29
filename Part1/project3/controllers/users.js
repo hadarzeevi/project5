@@ -1,138 +1,171 @@
-const Users = require ('../models/users');
+const User = require('../models/users');
 
 // Get a user by ID
-exports.getUser = (req, res) => {
-  req.headers['user-id'];
-  const id = req.params.id;
-  const user = Users.getUser(id);
-  if (user) {
-    // User found
-    res.status(200).json(user);
-  } else {
-    // User not found
-    res.status(404).json({ error: "User not found" });
+exports.getUser = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json(user.toSafeObject());
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-exports.checkUsername = (req, res) => {
-  const username = req.params.username;
+// Check if username is unique
+exports.checkUsername = async (req, res) => {
+  try {
+    const username = req.params.username;
+    const existingUser = await User.findByUsername(username);
 
-  const existingUser = Users.getUserByUsername(username);
-  if (existingUser) {
-    return res.status(200).json({ isUnique: false });
+    res.status(200).json({ isUnique: !existingUser });
+  } catch (error) {
+    console.error('Error checking username:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
+};
 
-  return res.status(200).json({ isUnique: true });
-}; 
+// Get user by username (helper function)
+exports.getUserByUsername = async (username) => {
+  try {
+    return await User.findByUsername(username);
+  } catch (error) {
+    console.error('Error getting user by username:', error);
+    return null;
+  }
+};
 
-exports.getUserByUsername = (username) => {
-  return Users.users.find(user => user.username === username);
+// Get user by mail (helper function for tokens.js or login)
+exports.getUserByMail = async (mail) => {
+  try {
+    return await User.findByEmail(mail);
+  } catch (error) {
+    console.error('Error getting user by mail:', error);
+    return null;
+  }
 };
 
 // Add a new user
-exports.addUser = (req, res) => {
-  
-  const { mail, first_name, last_name, username, birth_date, gender, password, reWritePass } = req.body;
-  let profileImage = req.file ? req.file.path : req.body.profileImage;
+exports.addUser = async (req, res) => {
+  try {
+    const { mail, first_name, last_name, username, birth_date, gender, password, reWritePass } = req.body;
+    let profileImage = req.file ? req.file.path : req.body.profileImage;
 
-  // validating that all fields are provided
-  if (!mail || !first_name || !last_name || !username || !birth_date || !gender || !password || !reWritePass) {
-    return res.status(400).json({ error: "All fields are required" });
-  }
+    // Validation checks...
+    if (!mail || !first_name || !last_name || !username || !birth_date || !gender || !password || !reWritePass) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
 
-  // validating that the email is in a valid format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(mail)) {
-    return res.status(400).json({ error: "Invalid email format" });
-  }
-
-  // valid that the password is at least 8 characters long and contains letters and numbers
-  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
-  if (!passwordRegex.test(password)) {
-    return res.status(400).json({ error: "Password must be at least 8 characters long and contain letters and numbers" });
-  }
-
-  // validating that the passwords match
-  if (password !== reWritePass) {
-    return res.status(400).json({ error: "Passwords do not match" });
-  }
-
-  // validating first and last names (at least 2 letters, only letters)
-  const nameRegex = /^[A-Za-zא-ת]{2,}$/;
-  if (!nameRegex.test(first_name) || !nameRegex.test(last_name)) {
-    return res.status(400).json({ error: "First and last names must contain at least 2 letters and only letters" });
-  }
-
-  // validdation for birth date
-  if (isNaN(Date.parse(birth_date))) {
-    return res.status(400).json({ error: "Invalid birth date format" });
-  }
-
-  // valid gender values
-  const allowedGenders = ['male', 'female'];
-  if (!allowedGenders.includes(gender.toLowerCase())) {
-    return res.status(400).json({ error: "Invalid gender value" });
-  }
-
-  // cjeck if email already exists
-  const existingUser = Users.getUserByMail(mail);
-  if (existingUser) {
-    return res.status(400).json({ error: "Email already exists" });
-  }
-
-  // check if username already exists
-  const existingUserByUsername = Users.getUserByUsername(username); 
-  if (existingUserByUsername) {
-    return res.status(400).json({ error: "Username already exists" });
-  }
-
-// adding the user
-  if (!profileImage) { // need to check if picture is provided ------?
-    profileImage = "https://example.com/default-profile-picture.png"; // תמונה ברירת מחדל אם לא ניתנה
-  }
-  Users.addUser({ first_name, last_name, username, mail, birth_date, gender, password, reWritePass, profileImage });
-
-  res.status(201).json({ message: "User added successfully" });
-};
-
-exports.updateUser = (req, res) => {
-  const id = req.params.id;
-  const { mail, first_name, last_name, username, birth_date, gender } = req.body;
-  let profileImage = req.file ? req.file.path : req.body.profileImage;
-
-
-  // Find the user
-  const userIndex = Users.users.findIndex(user => user.id == id);
-  if (userIndex === -1) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  const currentUser = Users.users[userIndex];
-
-  // Validation for email format
-  if (mail) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(mail)) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // Check if email already exists (but not for current user)
-    const existingUser = Users.getUserByMail(mail);
-    if (existingUser && existingUser.id != id) {
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ error: "Password must be at least 8 characters long and contain letters and numbers" });
+    }
+
+    if (password !== reWritePass) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    const nameRegex = /^[A-Za-zא-ת]{2,}$/;
+    if (!nameRegex.test(first_name) || !nameRegex.test(last_name)) {
+      return res.status(400).json({ error: "First and last names must contain at least 2 letters and only letters" });
+    }
+
+    if (isNaN(Date.parse(birth_date))) {
+      return res.status(400).json({ error: "Invalid birth date format" });
+    }
+
+    const allowedGenders = ['male', 'female'];
+    if (!allowedGenders.includes(gender.toLowerCase())) {
+      return res.status(400).json({ error: "Invalid gender value" });
+    }
+
+    const existingUser = await User.findByEmail(mail);
+    if (existingUser) {
       return res.status(400).json({ error: "Email already exists" });
     }
-  }
 
-  // Validation for username
-  if (username) {
-    const existingUserByUsername = Users.getUserByUsername(username);
-    if (existingUserByUsername && existingUserByUsername.id != id) {
+    const existingUserByUsername = await User.findByUsername(username);
+    if (existingUserByUsername) {
       return res.status(400).json({ error: "Username already exists" });
     }
-  }
 
-  // Validation for names
-  if (first_name || last_name) {
+    if (!profileImage) {
+      profileImage = "https://example.com/default-profile-picture.png";
+    }
+
+    const newUser = new User({
+      first_name,
+      last_name,
+      username,
+      mail,
+      birth_date,
+      gender,
+      password,
+      reWritePass,
+      profileImage
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ message: "User added successfully" });
+  } catch (error) {
+    console.error('Error adding user:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({ error: `${field} already exists` });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// Update user
+exports.updateUser = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { mail, first_name, last_name, username, birth_date, gender } = req.body;
+    let profileImage = req.file ? req.file.path : req.body.profileImage;
+
+    const currentUser = await User.findById(id);
+    if (!currentUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const updateData = {};
+
+    if (mail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(mail)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+      const existingUser = await User.findByEmail(mail);
+      if (existingUser && !existingUser._id.equals(id)) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+      updateData.mail = mail;
+    }
+
+    if (username) {
+      const existingUserByUsername = await User.findByUsername(username);
+      if (existingUserByUsername && !existingUserByUsername._id.equals(id)) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      updateData.username = username;
+    }
+
     const nameRegex = /^[A-Za-zא-ת]{2,}$/;
     if (first_name && !nameRegex.test(first_name)) {
       return res.status(400).json({ error: "First name must contain at least 2 letters and only letters" });
@@ -140,39 +173,48 @@ exports.updateUser = (req, res) => {
     if (last_name && !nameRegex.test(last_name)) {
       return res.status(400).json({ error: "Last name must contain at least 2 letters and only letters" });
     }
-  }
 
-  // Validation for birth date
-  if (birth_date && isNaN(Date.parse(birth_date))) {
-    return res.status(400).json({ error: "Invalid birth date format" });
-  }
+    if (first_name) updateData.first_name = first_name;
+    if (last_name) updateData.last_name = last_name;
 
-  // Validation for gender
-  if (gender) {
-    const allowedGenders = ['male', 'female'];
-    if (!allowedGenders.includes(gender.toLowerCase())) {
-      return res.status(400).json({ error: "Invalid gender value" });
+    if (birth_date) {
+      if (isNaN(Date.parse(birth_date))) {
+        return res.status(400).json({ error: "Invalid birth date format" });
+      }
+      updateData.birth_date = birth_date;
     }
+
+    if (gender) {
+      const allowedGenders = ['male', 'female'];
+      if (!allowedGenders.includes(gender.toLowerCase())) {
+        return res.status(400).json({ error: "Invalid gender value" });
+      }
+      updateData.gender = gender;
+    }
+
+    if (profileImage) {
+      updateData.profileImage = profileImage;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true
+    });
+
+    res.status(200).json({
+      message: "User updated successfully",
+      user: updatedUser.toSafeObject()
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ error: messages.join(', ') });
+    }
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue)[0];
+      return res.status(400).json({ error: `${field} already exists` });
+    }
+    res.status(500).json({ error: 'Internal server error' });
   }
-
-  // Update the user
-  const updatedUser = {
-    ...currentUser,
-    ...(mail && { mail }),
-    ...(first_name && { first_name }),
-    ...(last_name && { last_name }),
-    ...(username && { username }),
-    ...(birth_date && { birth_date }),
-    ...(gender && { gender }),
-    ...(profileImage && { profileImage })
-  };
-
-  Users.users[userIndex] = updatedUser;
-
-  // Return updated user without password
-  const { password, reWritePass, ...userWithoutPassword } = updatedUser;
-  res.status(200).json({ 
-    message: "User updated successfully", 
-    user: userWithoutPassword 
-  });
 };
