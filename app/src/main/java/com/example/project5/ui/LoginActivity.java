@@ -8,17 +8,12 @@ import android.text.InputType;
 import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
-import android.view.ViewStructure;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
-
-import com.example.project5.MainActivity;
 import com.example.project5.R;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.IOException;
-
 import okhttp3.*;
 
 public class LoginActivity extends AppCompatActivity {
@@ -28,43 +23,44 @@ public class LoginActivity extends AppCompatActivity {
     private CheckBox showPasswordCheckbox;
     private OkHttpClient client = new OkHttpClient();
     private String userEmail;
-    TextView tvError;
+    private TextView tvError;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d("DEBUG", "1");
-
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_login);
+
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
         nextButton = findViewById(R.id.nextButton);
         signInButton = findViewById(R.id.signInButton);
         showPasswordCheckbox = findViewById(R.id.showPasswordCheckbox);
-        nextButton.setOnClickListener(v -> verifyEmail());
-        showPasswordCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+        tvError = findViewById(R.id.tvError);
 
+        nextButton.setOnClickListener(v -> verifyEmail());
+
+        showPasswordCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
                 passwordEditText.setInputType(InputType.TYPE_CLASS_TEXT);
             } else {
                 passwordEditText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
             }
         });
+
         signInButton.setOnClickListener(v -> login());
+
         TextView registerText = findViewById(R.id.registerText);
         registerText.setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-            startActivity(intent);
-
+            startActivity(new Intent(LoginActivity.this, RegisterActivity.class));
         });
     }
+
     private void verifyEmail() {
         userEmail = emailEditText.getText().toString().trim();
         if (!Patterns.EMAIL_ADDRESS.matcher(userEmail).matches()) {
             showError("Invalid email address");
             return;
         }
-
 
         try {
             JSONObject json = new JSONObject();
@@ -78,25 +74,22 @@ public class LoginActivity extends AppCompatActivity {
             client.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    Log.e("ERROR", "Request failed: " + e.getMessage());
-                    runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Connection error", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> showError("Connection error"));
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) throws IOException {
-
-                    if (response.isSuccessful()) {
-                        runOnUiThread(() -> {
+                public void onResponse(Call call, Response response) {
+                    runOnUiThread(() -> {
+                        if (response.isSuccessful()) {
                             showPasswordStep();
-                        });
-                    } else {
-                        runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Email not found", Toast.LENGTH_SHORT).show());
-                    }
+                        } else {
+                            showError("Email not found");
+                        }
+                    });
                 }
             });
-
         } catch (Exception e) {
-            Log.e("ERROR", "Exception in verifyEmail: " + e.getMessage());
+            showError("Error verifying email");
             e.printStackTrace();
         }
     }
@@ -107,13 +100,13 @@ public class LoginActivity extends AppCompatActivity {
         showPasswordCheckbox.setVisibility(View.VISIBLE);
         nextButton.setVisibility(View.GONE);
         emailEditText.setEnabled(false);
+        tvError.setVisibility(View.GONE);
     }
 
     private void login() {
         String password = passwordEditText.getText().toString().trim();
-
         if (password.isEmpty()) {
-            Toast.makeText(this, "Enter password", Toast.LENGTH_SHORT).show();
+            showError("Enter password");
             return;
         }
 
@@ -131,53 +124,77 @@ public class LoginActivity extends AppCompatActivity {
             client.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(Call call, IOException e) {
-                    runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Connection error", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> showError("Connection error"));
                 }
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
                     if (response.isSuccessful()) {
-                        String responseBody = response.body().string();
-                        JSONObject data = null;
                         try {
-                            data = new JSONObject(responseBody);
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
-                        String token = null;
-                        try {
-                            token = data.getString("token");
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
-                        String userId = null;
-                        try {
-                            userId = data.getString("userId");
-                        } catch (JSONException e) {
-                            throw new RuntimeException(e);
-                        }
+                            String responseBody = response.body().string();
+                            JSONObject data = new JSONObject(responseBody);
+                            String token = data.getString("token");
+                            String userId = data.getString("userId");
 
-                        // שמירה ב־SharedPreferences
-                        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-                        prefs.edit()
-                                .putString("token", token)
-                                .putString("userId", userId)
-                                .putString("email", userEmail)
-                                .apply();
+                            fetchUserProfileAndProceed(token, userId);
 
-                        // מעבר למסך הראשי
-                        Intent intent = new Intent(LoginActivity.this, MailHomeActivity.class);
-                        startActivity(intent);
+                        } catch (JSONException | IOException e) {
+                            e.printStackTrace();
+                            runOnUiThread(() -> showError("Error parsing server response"));
+                        }
                     } else {
-                        runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Incorrect password", Toast.LENGTH_SHORT).show());
+                        runOnUiThread(() -> showError("Incorrect password"));
                     }
                 }
             });
 
         } catch (Exception e) {
             e.printStackTrace();
+            showError("Login error");
         }
     }
+
+    private void fetchUserProfileAndProceed(String token, String userId) {
+        Request request = new Request.Builder()
+                .url("http://10.0.2.2:4000/api/users/" + userId)
+                .header("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> showError("Error fetching profile"));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (response.isSuccessful()) {
+                    try {
+                        String res = response.body().string();
+                        JSONObject user = new JSONObject(res);
+                        String profileImage = user.optString("profileImage", null);
+
+                        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                        prefs.edit()
+                                .putString("token", token)
+                                .putString("userId", userId)
+                                .putString("profileImage", profileImage)
+                                .apply();
+
+                        startActivity(new Intent(LoginActivity.this, MailHomeActivity.class));
+                        finish();
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        runOnUiThread(() -> showError("Error parsing profile data"));
+                    }
+                } else {
+                    runOnUiThread(() -> showError("Failed to fetch profile"));
+                }
+            }
+        });
+    }
+
     private void showError(String msg) {
         tvError.setText(msg);
         tvError.setVisibility(View.VISIBLE);
