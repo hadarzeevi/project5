@@ -84,12 +84,16 @@
 
 package com.example.project5.ui;
 
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Typeface;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -97,6 +101,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.project5.R;
 import com.example.project5.model.Mail;
+
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -107,12 +113,13 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
     private final Consumer<Mail> onMailClicked;
     private final Consumer<Mail> onStarClicked;
 
-    public MailAdapter(List<Mail> mailList, Consumer<Mail> onMailClicked, Consumer<Mail> onStarClicked) {
+    private final Context context;
+    public MailAdapter(Context context, List<Mail> mailList, Consumer<Mail> onMailClicked, Consumer<Mail> onStarClicked) {
+        this.context = context;
         this.mailList = mailList;
         this.onMailClicked = onMailClicked;
         this.onStarClicked = onStarClicked;
     }
-
     @NonNull
     @Override
     public MailViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -167,7 +174,21 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
         holder.ivAttachment.setVisibility(mail.hasAttachment ? View.VISIBLE : View.GONE);
 
         // האזנה להקלקות
-        holder.itemView.setOnClickListener(v -> onMailClicked.accept(mail));
+        holder.itemView.setOnClickListener(v -> {
+            try {
+                Log.d("MAIL_ADAPTER", "Building intent");
+                Intent intent = new Intent(holder.itemView.getContext(), MailDetailActivity.class);
+                JSONObject mailJson = mail.toJson();
+                Log.d("MAIL_ADAPTER", "Mail JSON: " + mailJson.toString());
+                intent.putExtra("MAIL_JSON", mailJson.toString());
+                holder.itemView.getContext().startActivity(intent);
+            } catch (Exception e) {
+                Log.e("MAIL_ADAPTER", "Error opening mail", e);
+                Toast.makeText(holder.itemView.getContext(), "שגיאה בפתיחת מייל", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+
         holder.ivStar.setOnClickListener(v -> onStarClicked.accept(mail));
     }
 

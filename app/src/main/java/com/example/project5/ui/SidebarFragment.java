@@ -1,5 +1,6 @@
 package com.example.project5.ui;
 
+import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -28,6 +29,8 @@ public class SidebarFragment extends Fragment {
     private LinearLayout categoriesContainer;
     private LinearLayout labelsContainer;
     private ImageButton btnAddLabel;
+    private OnCategorySelectedListener listener;
+
     private final List<String> userLabels = new ArrayList<>();
     private View selectedCategoryView = null;
 
@@ -74,7 +77,12 @@ public class SidebarFragment extends Fragment {
                 ((TextView) v).setTypeface(null, Typeface.BOLD);
                 selectedCategoryView = v;
                 Toast.makeText(getContext(), category + " selected", Toast.LENGTH_SHORT).show();
+
+                if (listener != null) {
+                    listener.onCategorySelected(category.toLowerCase());
+                }
             });
+
 
             categoriesContainer.addView(tv);
         }
@@ -144,4 +152,12 @@ public class SidebarFragment extends Fragment {
         labelItem.addView(deleteIcon);
         labelsContainer.addView(labelItem);
     }
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        if (context instanceof OnCategorySelectedListener) {
+            listener = (OnCategorySelectedListener) context;
+        }
+    }
+
 }

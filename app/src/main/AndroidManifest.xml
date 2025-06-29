@@ -24,6 +24,7 @@
         <activity android:name=".ui.RegisterActivity" />
         <activity android:name=".ui.MailHomeActivity" />
         <activity android:name=".ui.ComposeActivity"/>
+        <activity android:name=".ui.MailDetailActivity" />
 
 
     </application>

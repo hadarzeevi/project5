@@ -18,8 +18,10 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.example.project5.R;
 
-public class MailHomeActivity extends AppCompatActivity {
+public class MailHomeActivity extends AppCompatActivity implements OnCategorySelectedListener{
     private boolean isDarkMode = false;
+    private MailListFragment mailListFragment;
+
     AppCompatActivity view = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,7 +29,8 @@ public class MailHomeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_mail_home);
 
         Log.d("DEBUG", "inside");
-        loadFragment(R.id.mailContentContainer, new MailListFragment());
+        mailListFragment = new MailListFragment();
+        loadFragment(R.id.mailContentContainer, mailListFragment);
 
         // כפתור כתיבת מייל
         Button btnCompose = findViewById(R.id.btnComposeFloating);
@@ -91,5 +94,12 @@ public class MailHomeActivity extends AppCompatActivity {
         getSupportFragmentManager().beginTransaction()
                 .replace(containerId, fragment)
                 .commit();
+    }
+    @Override
+    public void onCategorySelected(String category) {
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.mailContentContainer);
+        if (currentFragment instanceof MailListFragment) {
+            ((MailListFragment) currentFragment).setCategory(category);
+        }
     }
 }

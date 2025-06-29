@@ -129,7 +129,9 @@ public class ComposeActivity extends Activity {
                                 runOnUiThread(() -> {
                                     if (response.isSuccessful()) {
                                         Toast.makeText(ComposeActivity.this, "המייל נשלח!", Toast.LENGTH_SHORT).show();
-                                        finish();
+                                        Intent intent = new Intent(ComposeActivity.this, MailHomeActivity.class);
+                                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                                        startActivity(intent);
                                     } else {
                                         Toast.makeText(ComposeActivity.this, "שגיאה בשליחה", Toast.LENGTH_SHORT).show();
                                     }

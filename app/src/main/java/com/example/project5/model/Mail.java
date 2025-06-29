@@ -21,6 +21,7 @@ public class Mail {
     public String mail;
     public String profileImage;
 
+    public String category;
     public static Mail fromJson(JSONObject obj) throws JSONException {
         Mail mail = new Mail();
         mail.id = obj.optString("_id", "");
@@ -33,6 +34,7 @@ public class Mail {
         mail.isStarred = obj.optBoolean("isStarred", false);
         mail.isRead = obj.optBoolean("isRead", false);
         mail.hasAttachment = obj.optBoolean("hasAttachment", false);
+        mail.category = obj.optString("category", "");
 
         if (obj.has("sender")) {
             JSONObject sender = obj.getJSONObject("sender");
@@ -44,4 +46,32 @@ public class Mail {
 
         return mail;
     }
+    public JSONObject toJson() {
+        JSONObject obj = new JSONObject();
+        try {
+            obj.put("_id", id);
+            obj.put("from", from);
+            obj.put("fromMail", fromMail);
+            obj.put("subject", subject);
+            obj.put("preview", preview);
+            obj.put("body", body);
+            obj.put("date", date);
+            obj.put("isStarred", isStarred);
+            obj.put("isRead", isRead);
+            obj.put("hasAttachment", hasAttachment);
+            obj.put("category", category);
+
+            JSONObject sender = new JSONObject();
+            sender.put("first_name", firstName);
+            sender.put("last_name", lastName);
+            sender.put("mail", mail);
+            sender.put("profileImage", profileImage);
+            obj.put("sender", sender);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return obj;
+    }
+
+
 }
