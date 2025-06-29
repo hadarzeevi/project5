@@ -19,7 +19,7 @@ public class Mail {
         mail.from = obj.getString("from");
         mail.subject = obj.getString("subject");
         mail.preview = obj.getString("preview");
-        mail.date = obj.getString("date");
+        mail.date = obj.optString("date", ""); // ← הכי חשוב!
         mail.isStarred = obj.getBoolean("isStarred");
         mail.isRead = obj.getBoolean("isRead");
         mail.hasAttachment = obj.getBoolean("hasAttachment");

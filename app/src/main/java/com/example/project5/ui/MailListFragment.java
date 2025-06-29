@@ -1,10 +1,17 @@
 package com.example.project5.ui;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.project5.R;
@@ -17,7 +24,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 
-public class MailListActivity extends AppCompatActivity {
+public class MailListFragment extends Fragment {
 
     private RecyclerView recyclerView;
     private MailAdapter adapter;
@@ -26,20 +33,21 @@ public class MailListActivity extends AppCompatActivity {
     private final String API_URL = "http://10.0.2.2:4000/api/mails"; // שנה לכתובת השרת שלך
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_mail_list);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container,
+                             Bundle savedInstanceState) {
 
-        recyclerView = findViewById(R.id.recyclerViewMails);
-        progressBar = findViewById(R.id.progressBar);
+        View view = inflater.inflate(R.layout.fragment_mail_list, container, false);
 
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView = view.findViewById(R.id.recyclerViewMails);
+        progressBar = view.findViewById(R.id.progressBar);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
         adapter = new MailAdapter(
                 mailList,
                 mail -> {
-                    Toast.makeText(this, "Clicked: " + mail.subject, Toast.LENGTH_SHORT).show();
-                    // כאן תוכל לפתוח MailDetailActivity בהמשך
+                    Toast.makeText(getContext(), "Clicked: " + mail.subject, Toast.LENGTH_SHORT).show();
                 },
                 mail -> {
                     mail.isStarred = !mail.isStarred;
@@ -48,9 +56,11 @@ public class MailListActivity extends AppCompatActivity {
         );
 
         recyclerView.setAdapter(adapter);
-
         loadMails();
+
+        return view;
     }
+
 
     private void loadMails() {
         progressBar.setVisibility(View.VISIBLE);
@@ -60,32 +70,64 @@ public class MailListActivity extends AppCompatActivity {
                 URL url = new URL(API_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
+                Log.d("DEBUG", "get");
+
+                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                Log.d("DEBUG", "token" + token);
+
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                Log.d("DEBUG", "reader" + reader);
+
                 StringBuilder json = new StringBuilder();
+                Log.d("DEBUG", "json" + json);
+
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    Log.d("DEBUG", "loop");
+
                     json.append(line);
                 }
+                Log.d("DEBUG", "close");
                 reader.close();
+                Log.d("DEBUG", json.toString());
+                JSONObject responseObject = new JSONObject(json.toString());
+                Log.d("DEBUG", "responseObject");
+                JSONArray jsonArray = responseObject.getJSONArray("mails");
+                Log.d("DEBUG", "jsonArray");
 
-                JSONArray jsonArray = new JSONArray(json.toString());
                 mailList.clear();
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    JSONObject obj = jsonArray.getJSONObject(i);
-                    Mail mail = Mail.fromJson(obj);
-                    mailList.add(mail);
-                }
+                Log.d("DEBUG", "clear");
 
-                runOnUiThread(() -> {
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    Log.d("DEBUG", "insidee");
+
+                    JSONObject obj = jsonArray.getJSONObject(i);
+                    Log.d("DEBUG", "1");
+
+                    Mail mail = Mail.fromJson(obj);
+                    Log.d("DEBUG", "2");
+
+                    mailList.add(mail);
+                    Log.d("DEBUG", "3");
+
+                }
+                Log.d("DEBUG", "HELLO");
+
+                requireActivity().runOnUiThread(() -> {
                     adapter.notifyDataSetChanged();
                     progressBar.setVisibility(View.GONE);
                 });
 
+
             } catch (Exception e) {
-                runOnUiThread(() -> {
+                requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();
