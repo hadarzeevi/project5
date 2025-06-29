@@ -167,7 +167,6 @@ public class LoginActivity extends AppCompatActivity {
                         // מעבר למסך הראשי
                         Intent intent = new Intent(LoginActivity.this, MailHomeActivity.class);
                         startActivity(intent);
-                        finish();
                     } else {
                         runOnUiThread(() -> Toast.makeText(LoginActivity.this, "Incorrect password", Toast.LENGTH_SHORT).show());
                     }
