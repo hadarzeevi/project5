@@ -23,6 +23,7 @@
         <activity android:name=".ui.LoginActivity" />
         <activity android:name=".ui.RegisterActivity" />
         <activity android:name=".ui.MailHomeActivity" />
+        <activity android:name=".ui.ComposeActivity"/>
 
 
     </application>

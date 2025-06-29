@@ -70,54 +70,29 @@ public class MailListFragment extends Fragment {
                 URL url = new URL(API_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
-                Log.d("DEBUG", "get");
-
                 SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
                 String token = prefs.getString("token", null);
-                Log.d("DEBUG", "token" + token);
 
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer " + token);
                 }
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                Log.d("DEBUG", "reader" + reader);
-
                 StringBuilder json = new StringBuilder();
-                Log.d("DEBUG", "json" + json);
 
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    Log.d("DEBUG", "loop");
-
                     json.append(line);
                 }
-                Log.d("DEBUG", "close");
                 reader.close();
-                Log.d("DEBUG", json.toString());
                 JSONObject responseObject = new JSONObject(json.toString());
-                Log.d("DEBUG", "responseObject");
                 JSONArray jsonArray = responseObject.getJSONArray("mails");
-                Log.d("DEBUG", "jsonArray");
-
                 mailList.clear();
-                Log.d("DEBUG", "clear");
-
                 for (int i = 0; i < jsonArray.length(); i++) {
-                    Log.d("DEBUG", "insidee");
-
                     JSONObject obj = jsonArray.getJSONObject(i);
-                    Log.d("DEBUG", "1");
-
                     Mail mail = Mail.fromJson(obj);
-                    Log.d("DEBUG", "2");
-
                     mailList.add(mail);
-                    Log.d("DEBUG", "3");
-
                 }
-                Log.d("DEBUG", "HELLO");
-
                 requireActivity().runOnUiThread(() -> {
                     adapter.notifyDataSetChanged();
                     progressBar.setVisibility(View.GONE);

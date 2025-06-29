@@ -23,6 +23,11 @@
     <string name="labels">Labels</string>
     <string name="add_label">Add label</string>
     <string name="delete_label">Delete label</string>
+    <string name="new_message">New Message</string>
+    <string name="to">To</string>
+    <string name="from">from:</string>
+    <string name="subject">Subject</string>
+    <string name="write_your_email">Write your email</string>
     <string-array name="gender_array">
         <item>Select Gender</item>
         <item>Male</item>

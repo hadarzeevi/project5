@@ -162,6 +162,7 @@ public class LoginActivity extends AppCompatActivity {
                         prefs.edit()
                                 .putString("token", token)
                                 .putString("userId", userId)
+                                .putString("email", userEmail)
                                 .apply();
 
                         // מעבר למסך הראשי
