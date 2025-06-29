@@ -7,26 +7,23 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.project5.R;
 import com.example.project5.model.Mail;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 
-public class MailListActivity extends AppCompatActivity implements MailAdapter.OnMailActionListener {
+public class MailListActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private MailAdapter adapter;
     private ProgressBar progressBar;
-    private ArrayList<Mail> mailList = new ArrayList<>();
-    private final String API_URL = "http://10.0.2.2:4000/api/mails"; // שנה לשרת שלך
+    private final ArrayList<Mail> mailList = new ArrayList<>();
+    private final String API_URL = "http://10.0.2.2:4000/api/mails"; // שנה לכתובת השרת שלך
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +34,19 @@ public class MailListActivity extends AppCompatActivity implements MailAdapter.O
         progressBar = findViewById(R.id.progressBar);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new MailAdapter(mailList, this);
+
+        adapter = new MailAdapter(
+                mailList,
+                mail -> {
+                    Toast.makeText(this, "Clicked: " + mail.subject, Toast.LENGTH_SHORT).show();
+                    // כאן תוכל לפתוח MailDetailActivity בהמשך
+                },
+                mail -> {
+                    mail.isStarred = !mail.isStarred;
+                    adapter.notifyDataSetChanged();
+                }
+        );
+
         recyclerView.setAdapter(adapter);
 
         loadMails();
@@ -80,17 +89,5 @@ public class MailListActivity extends AppCompatActivity implements MailAdapter.O
                 });
             }
         }).start();
-    }
-
-    @Override
-    public void onMailClicked(Mail mail) {
-        Toast.makeText(this, "Clicked: " + mail.subject, Toast.LENGTH_SHORT).show();
-        // כאן תוכלי לפתוח MailDetailActivity בעתיד
-    }
-
-    @Override
-    public void onStarClicked(Mail mail) {
-        mail.isStarred = !mail.isStarred;
-        adapter.notifyDataSetChanged();
     }
 }

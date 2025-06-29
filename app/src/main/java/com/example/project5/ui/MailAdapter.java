@@ -1,6 +1,5 @@
 package com.example.project5.ui;
 
-import android.content.Context;
 import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,20 +11,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.project5.R;
 import com.example.project5.model.Mail;
 import java.util.List;
+import java.util.function.Consumer; // חשוב
 
 public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder> {
 
-    public interface OnMailActionListener {
-        void onMailClicked(Mail mail);
-        void onStarClicked(Mail mail);
-    }
+    private final List<Mail> mailList;
+    private final Consumer<Mail> onMailClicked;
+    private final Consumer<Mail> onStarClicked;
 
-    private List<Mail> mailList;
-    private OnMailActionListener listener;
-
-    public MailAdapter(List<Mail> mailList, OnMailActionListener listener) {
+    public MailAdapter(List<Mail> mailList, Consumer<Mail> onMailClicked, Consumer<Mail> onStarClicked) {
         this.mailList = mailList;
-        this.listener = listener;
+        this.onMailClicked = onMailClicked;
+        this.onStarClicked = onStarClicked;
     }
 
     @NonNull
@@ -53,16 +50,15 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
         }
 
         if (mail.isStarred) {
-            holder.ivStar.setImageResource(R.drawable.ic_star); // ------?
-            // Not got! need to change it to ic_star_filled
+            holder.ivStar.setImageResource(R.drawable.ic_star);
         } else {
             holder.ivStar.setImageResource(R.drawable.ic_star);
         }
 
         holder.ivAttachment.setVisibility(mail.hasAttachment ? View.VISIBLE : View.GONE);
 
-        holder.itemView.setOnClickListener(v -> listener.onMailClicked(mail));
-        holder.ivStar.setOnClickListener(v -> listener.onStarClicked(mail));
+        holder.itemView.setOnClickListener(v -> onMailClicked.accept(mail));
+        holder.ivStar.setOnClickListener(v -> onStarClicked.accept(mail));
     }
 
     @Override
