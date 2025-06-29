@@ -1,10 +1,8 @@
 package com.example.project5.ui;
 
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,13 +14,10 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.example.project5.R;
 import com.example.project5.model.Mail;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -34,10 +29,8 @@ public class MailListFragment extends Fragment {
     private RecyclerView recyclerView;
     private MailAdapter adapter;
     private ProgressBar progressBar;
-    private String category = "inbox";
-    private String searchTerm = "";
     private final ArrayList<Mail> mailList = new ArrayList<>();
-    private final String API_URL = "http://10.0.2.2:4000/api/mails";
+    private final String API_URL = "http://10.0.2.2:4000/api/mails"; // שנה לכתובת השרת שלך
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -50,27 +43,13 @@ public class MailListFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        Log.d("DEBUG", "hi");
+
         adapter = new MailAdapter(
-        requireContext(), // ← הוספת context
-
-        mailList,
+                mailList,
                 mail -> {
-                    try {
-                        Log.d("DEBUG", "clicked mail: " + mail.subject);
-                        String jsonString = mail.toJson().toString();  // ← כאן עשויה להתרחש השגיאה
-                        Log.d("DEBUG", "converted to JSON: " + jsonString);
-
-                        Intent intent = new Intent(getContext(), MailDetailActivity.class);
-                        intent.putExtra("MAIL_JSON", jsonString);
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        Log.e("MailAdapter", "שגיאה בפתיחת מייל", e);
-                        Toast.makeText(getContext(), "שגיאה בפתיחת מייל", Toast.LENGTH_SHORT).show();
-                    }
+                    Toast.makeText(getContext(), "Clicked: " + mail.subject, Toast.LENGTH_SHORT).show();
                 },
                 mail -> {
-                    toggleStar(mail.id, mail.isStarred);
                     mail.isStarred = !mail.isStarred;
                     adapter.notifyDataSetChanged();
                 }
@@ -82,15 +61,6 @@ public class MailListFragment extends Fragment {
         return view;
     }
 
-    public void setCategory(String newCategory) {
-        this.category = newCategory;
-        loadMails();
-    }
-
-    public void setSearchTerm(String searchTerm) {
-        this.searchTerm = searchTerm;
-        loadMails();
-    }
 
     private void loadMails() {
         progressBar.setVisibility(View.VISIBLE);
@@ -100,6 +70,7 @@ public class MailListFragment extends Fragment {
                 URL url = new URL(API_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
+
                 SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
                 String token = prefs.getString("token", null);
 
@@ -109,7 +80,6 @@ public class MailListFragment extends Fragment {
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder json = new StringBuilder();
-
                 String line;
                 while ((line = reader.readLine()) != null) {
                     json.append(line);
@@ -119,13 +89,18 @@ public class MailListFragment extends Fragment {
                 JSONObject responseObject = new JSONObject(json.toString());
                 JSONArray jsonArray = responseObject.getJSONArray("mails");
                 mailList.clear();
+
                 for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     Mail mail = Mail.fromJson(obj);
-                    if (matchesCategory(mail) && matchesSearch(mail)) {
-                        mailList.add(mail);
+                    mailList.add(mail);
+
+                    // שליפת פרטי השולח לפי mail.from
+                    if (mail.from != null && !mail.from.isEmpty()) {
+                        fetchSenderDetails(mail.from, mail);
                     }
                 }
+
                 requireActivity().runOnUiThread(() -> {
                     adapter.notifyDataSetChanged();
                     progressBar.setVisibility(View.GONE);
@@ -140,71 +115,43 @@ public class MailListFragment extends Fragment {
         }).start();
     }
 
-    private boolean matchesCategory(Mail mail) {
-        switch (category) {
-            case "inbox":
-            case "sent":
-            case "drafts":
-            case "spam":
-            case "trash":
-                return category.equals(mail.category);
-            case "starred":
-                return mail.isStarred;
-            default:
-                return true;
-        }
-    }
-
-    private boolean matchesSearch(Mail mail) {
-        if (TextUtils.isEmpty(searchTerm)) return true;
-        String lower = searchTerm.toLowerCase();
-        return (mail.subject != null && mail.subject.toLowerCase().contains(lower)) ||
-                (mail.body != null && mail.body.toLowerCase().contains(lower)) ||
-                (mail.fromMail != null && mail.fromMail.toLowerCase().contains(lower));
-    }
-
-    private void toggleStar(String mailId, boolean currentStarred) {
+    // שליפת פרטי השולח ועדכון ה־Mail
+    private void fetchSenderDetails(String userId, Mail mail) {
+        Log.d("FetchSenderDetails", "Fetching for userId: " + userId);
         new Thread(() -> {
             try {
-                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
+                URL url = new URL("http://10.0.2.2:4000/api/users/" + userId);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("PATCH");
-                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestMethod("GET");
+
                 SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
                 String token = prefs.getString("token", null);
+
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer " + token);
                 }
 
-                conn.setDoOutput(true);
-                String payload = "{\"isStarred\": " + (!currentStarred) + "}";
-                conn.getOutputStream().write(payload.getBytes());
-                conn.getInputStream().close();
-            } catch (Exception e) {
-                Log.e("toggleStar", "Error: ", e);
-            }
-        }).start();
-    }
-
-    public void moveToCategory(String mailId, String newCategory, String previousCategory) {
-        new Thread(() -> {
-            try {
-                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("PATCH");
-                conn.setRequestProperty("Content-Type", "application/json");
-                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-                String token = prefs.getString("token", null);
-                if (token != null) {
-                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder json = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    json.append(line);
                 }
+                reader.close();
 
-                conn.setDoOutput(true);
-                String payload = "{\"category\": \"" + newCategory + "\", \"previousCategory\": \"" + previousCategory + "\"}";
-                conn.getOutputStream().write(payload.getBytes());
-                conn.getInputStream().close();
+                JSONObject userObj = new JSONObject(json.toString());
+
+                mail.username = userObj.optString("username", "");
+                mail.firstName = userObj.optString("first_name", "");
+                mail.lastName = userObj.optString("last_name", "");
+                mail.profileImage = userObj.optString("profileImage", "");
+                Log.d("FetchSenderDetails", "username: " + mail.username);
+
+
+                requireActivity().runOnUiThread(() -> adapter.notifyDataSetChanged());
+
             } catch (Exception e) {
-                Log.e("moveToCategory", "Error: ", e);
+                Log.e("FetchSenderDetails", "Error fetching sender details: " + e.getMessage());
             }
         }).start();
     }

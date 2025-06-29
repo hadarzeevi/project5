@@ -1,36 +1,34 @@
 package com.example.project5.ui;
 
-import static java.security.AccessController.getContext;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import com.example.project5.ui.UserMenuBottomSheet;
+
 
 import com.bumptech.glide.Glide;
 import com.example.project5.R;
 
-public class MailHomeActivity extends AppCompatActivity implements OnCategorySelectedListener{
-    private boolean isDarkMode = false;
-    private MailListFragment mailListFragment;
+public class MailHomeActivity extends AppCompatActivity {
 
-    AppCompatActivity view = null;
+    private boolean isDarkMode = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mail_home);
 
-        Log.d("DEBUG", "inside");
-        mailListFragment = new MailListFragment();
-        loadFragment(R.id.mailContentContainer, mailListFragment);
+        Log.d("DEBUG", "MailHomeActivity started");
+
+        // טען את רשימת המיילים למסך הראשי
+        loadFragment(R.id.mailContentContainer, new MailListFragment());
 
         // כפתור כתיבת מייל
         Button btnCompose = findViewById(R.id.btnComposeFloating);
@@ -39,14 +37,36 @@ public class MailHomeActivity extends AppCompatActivity implements OnCategorySel
             startActivity(intent);
         });
 
-        // טעינת תפריט צד ברירת מחדל (רק אם רוצים שיופיע מיד)
-        // loadFragment(R.id.sidebar, new SidebarFragment());
-
-        // כפתור תפריט
-        ImageView ivMenu = findViewById(R.id.ivMenu);
+        // טעינת תמונת פרופיל
         ImageView ivAvatar = findViewById(R.id.ivAvatar);
+        loadUserProfileImage(ivAvatar);
 
-// דוגמה לשליפת תמונת הפרופיל מה-SharedPreferences או מהמשתמש
+        // פתיחת תפריט פרופיל בלחיצה על תמונת הפרופיל
+        ivAvatar.setOnClickListener(v -> {
+            String username = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("username", "User");
+            String email = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("mail", "user@example.com");
+            String profileImage = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("profileImage", null);
+            String url = profileImage != null ? "http://10.0.2.2:4000/" + profileImage.replace("\\", "/") : null;
+
+            UserMenuBottomSheet bottomSheet = UserMenuBottomSheet.newInstance(username, email, url);
+            bottomSheet.show(getSupportFragmentManager(), "userMenu");
+        });
+
+        // תפריט צד (המבורגר)
+        ImageView ivMenu = findViewById(R.id.ivMenu);
+        FrameLayout sidebar = findViewById(R.id.sidebar);
+        View sidebarOverlay = findViewById(R.id.sidebarOverlay);
+
+        ivMenu.setOnClickListener(v -> toggleSidebar(sidebar, sidebarOverlay));
+        sidebarOverlay.setOnClickListener(v -> closeSidebar(sidebar, sidebarOverlay));
+
+        Log.d("DEBUG", "MailHomeActivity ready");
+    }
+
+    /**
+     * טוען את תמונת הפרופיל מה-SharedPreferences או תמונת ברירת מחדל
+     */
+    private void loadUserProfileImage(ImageView ivAvatar) {
         String userProfileImage = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                 .getString("profileImage", null);
 
@@ -56,50 +76,48 @@ public class MailHomeActivity extends AppCompatActivity implements OnCategorySel
                     .load(url)
                     .placeholder(R.drawable.ic_avatar)
                     .error(R.drawable.ic_avatar)
+                    .circleCrop()
                     .into(ivAvatar);
         } else {
             ivAvatar.setImageResource(R.drawable.ic_avatar);
         }
-
-        FrameLayout sidebar = findViewById(R.id.sidebar);
-        View sidebarOverlay = findViewById(R.id.sidebarOverlay);
-
-        ivMenu.setOnClickListener(v -> {
-            if (sidebar.getVisibility() == View.GONE) {
-                sidebar.setVisibility(View.VISIBLE);
-                sidebarOverlay.setVisibility(View.VISIBLE);
-                loadFragment(R.id.sidebar, new SidebarFragment());
-            } else {
-                sidebar.setVisibility(View.GONE);
-                sidebarOverlay.setVisibility(View.GONE);
-            }
-        });
-
-        // סגירה בלחיצה מחוץ לתפריט
-        sidebarOverlay.setOnClickListener(v -> {
-            sidebar.setVisibility(View.GONE);
-            sidebarOverlay.setVisibility(View.GONE);
-        });
-
-        Log.d("DEBUG", "end");
     }
 
-    private void toggleDarkMode() {
-        isDarkMode = !isDarkMode;
-        // ניתן לשמור במשתף העדפות ולהחיל עיצוב כהה
-        recreate(); // או עדכון של צבעים ידנית
-    }
-
+    /**
+     * טוען פרגמנט למיקום שנבחר במסך
+     */
     private void loadFragment(int containerId, Fragment fragment) {
         getSupportFragmentManager().beginTransaction()
                 .replace(containerId, fragment)
                 .commit();
     }
-    @Override
-    public void onCategorySelected(String category) {
-        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.mailContentContainer);
-        if (currentFragment instanceof MailListFragment) {
-            ((MailListFragment) currentFragment).setCategory(category);
+
+    /**
+     * פתיחה/סגירת תפריט צד
+     */
+    private void toggleSidebar(FrameLayout sidebar, View sidebarOverlay) {
+        if (sidebar.getVisibility() == View.GONE) {
+            sidebar.setVisibility(View.VISIBLE);
+            sidebarOverlay.setVisibility(View.VISIBLE);
+            loadFragment(R.id.sidebar, new SidebarFragment());
+        } else {
+            closeSidebar(sidebar, sidebarOverlay);
         }
+    }
+
+    /**
+     * סגירת תפריט צד
+     */
+    private void closeSidebar(FrameLayout sidebar, View sidebarOverlay) {
+        sidebar.setVisibility(View.GONE);
+        sidebarOverlay.setVisibility(View.GONE);
+    }
+
+    /**
+     * החלפת מצב כהה (לשימוש עתידי)
+     */
+    private void toggleDarkMode() {
+        isDarkMode = !isDarkMode;
+        recreate();
     }
 }
