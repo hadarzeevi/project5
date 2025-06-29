@@ -20,6 +20,7 @@ public class Mail {
     public String lastName;
     public String mail;
     public String profileImage;
+    public String username;
 
     public static Mail fromJson(JSONObject obj) throws JSONException {
         Mail mail = new Mail();

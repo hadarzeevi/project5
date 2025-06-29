@@ -70,6 +70,7 @@ public class MailListFragment extends Fragment {
                 URL url = new URL(API_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
+
                 SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
                 String token = prefs.getString("token", null);
 
@@ -79,31 +80,78 @@ public class MailListFragment extends Fragment {
 
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder json = new StringBuilder();
-
                 String line;
                 while ((line = reader.readLine()) != null) {
                     json.append(line);
                 }
                 reader.close();
+
                 JSONObject responseObject = new JSONObject(json.toString());
                 JSONArray jsonArray = responseObject.getJSONArray("mails");
                 mailList.clear();
+
                 for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     Mail mail = Mail.fromJson(obj);
                     mailList.add(mail);
+
+                    // שליפת פרטי השולח לפי mail.from
+                    if (mail.from != null && !mail.from.isEmpty()) {
+                        fetchSenderDetails(mail.from, mail);
+                    }
                 }
+
                 requireActivity().runOnUiThread(() -> {
                     adapter.notifyDataSetChanged();
                     progressBar.setVisibility(View.GONE);
                 });
-
 
             } catch (Exception e) {
                 requireActivity().runOnUiThread(() -> {
                     progressBar.setVisibility(View.GONE);
                     Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
+            }
+        }).start();
+    }
+
+    // שליפת פרטי השולח ועדכון ה־Mail
+    private void fetchSenderDetails(String userId, Mail mail) {
+        Log.d("FetchSenderDetails", "Fetching for userId: " + userId);
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/users/" + userId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+
+                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder json = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    json.append(line);
+                }
+                reader.close();
+
+                JSONObject userObj = new JSONObject(json.toString());
+
+                mail.username = userObj.optString("username", "");
+                mail.firstName = userObj.optString("first_name", "");
+                mail.lastName = userObj.optString("last_name", "");
+                mail.profileImage = userObj.optString("profileImage", "");
+                Log.d("FetchSenderDetails", "username: " + mail.username);
+
+
+                requireActivity().runOnUiThread(() -> adapter.notifyDataSetChanged());
+
+            } catch (Exception e) {
+                Log.e("FetchSenderDetails", "Error fetching sender details: " + e.getMessage());
             }
         }).start();
     }
