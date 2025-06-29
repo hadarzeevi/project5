@@ -1,148 +1,101 @@
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
-const jwt = require('jsonwebtoken');
-const Emails = require('../models/mails');
-const Users = require('../models/users');
+const fs   = require('fs');
+const jwt  = require('jsonwebtoken');
+const multer = require('multer');
+const mongoose = require('mongoose');
 
-    
-// This code handles file uploads and downloads in the email system using multer.
+const Mail = require('../models/mails');   // מודל המיילים
+const User = require('../models/users');   // מודל המשתמשים
+
+/* ───── Multer config ───── */
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = path.join(__dirname, '..', 'uploads');
-    // create the uploads directory if it doesn't exist
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
   },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 
-const upload = multer({ 
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
 });
 
+/* ───── Send Mail ───── */
 const sendMail = async (req, res) => {
   try {
-    
-    const { sendTo, subject, body } = req.body; 
-    const attachments = req.files || [];
+    const { sendTo, subject, body } = req.body;
+    const attachments = req.files ?? [];
 
-    // validate JWT token
-    const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'No token provided' });
-    }
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'No token provided' });
 
     let decoded;
     try {
-      decoded = jwt.verify(token, 'secretkeyHHE');
-    } catch (err) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkeyHHE');
+    } catch {
+      return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const userId = decoded.userId;
-    const user = Users.getUser(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    // check if recipient exists
-    const recipient = sendTo ? Users.getUserByMail(sendTo) : null;
-    if (!recipient) {
-      return res.status(404).json({ success: false, message: 'Recipient not found' });
-    }
-    // validate required fields
-    if (!sendTo || !subject || !body) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Missing required fields: sendTo, subject, or body' 
-      });
-    }
+    const sender    = await User.findById(decoded.userId).lean();
+    const recipient = await User.findOne({ mail: sendTo }).lean();
 
-    // validate email format like mail.js
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(sendTo)) {
-      return res.status(400).json({ success: false, message: "Invalid email format" });
-    }
+    if (!sender)    return res.status(404).json({ error: 'Sender not found' });
+    if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
 
-    const mailData = {
-      ownerId: userId,
-      from: userId,
-      fromMail: user.mail,
-      to: parseInt(sendTo),
-      toMail: recipient.mail,
+    if (!subject || !body)
+      return res.status(400).json({ error: 'Missing subject or body' });
+
+    const base = {
+      from      : sender._id,
+      fromMail  : sender.mail,
+      to        : recipient._id,
+      toMail    : recipient.mail,
       subject,
       body,
-      timestamp: new Date().toISOString(),
-      spam: false,
-      preview: body.substring(0, 50) + '...',
-      isRead: false,
-      category: 'sent',
-      attachments: attachments.map(file => ({
-        originalName: file.originalname,
-        filename: file.filename,
-        path: file.path,
-        size: file.size,
-        mimetype: file.mimetype
+      preview   : body.slice(0, 50) + '…',
+      isRead    : false,
+      spam      : false,
+      timestamp : new Date(),
+      attachments: attachments.map(f => ({
+        originalName: f.originalname,
+        filename    : f.filename,
+        path        : f.path,
+        size        : f.size,
+        mimetype    : f.mimetype
       }))
     };
 
-    const inboxMail = {
-      ...mailData,
-      category: 'inbox',
-      ownerId: parseInt(sendTo)
-    };
-    
+    const inboxMail = new Mail({ ...base, ownerId: recipient._id, category: 'inbox' });
+    const sentMail  = new Mail({ ...base, ownerId: sender._id,    category: 'sent'  });
 
-    // update IDs for mailData and inboxMail
-    mailData.to = recipient.id;
-    mailData.id = Emails.emails.length + 1;
-    
-    inboxMail.to = recipient.id;
-    inboxMail.ownerId = recipient.id;
-    inboxMail.id = Emails.emails.length + 2;
+    await Mail.insertMany([inboxMail, sentMail]);
 
-    // saving mails like in mails.js
-    Emails.addMail(mailData);
-    Emails.addMail(inboxMail);
-    // save attachments to the database
-    res.json({ 
-      success: true, 
-      message: 'Email sent successfully',
+    res.status(201).json({
+      success : true,
+      message : 'Email sent',
+      sentId  : sentMail._id,
       attachments: attachments.length
     });
 
-  } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ success: false, message: error.message });
+  } catch (err) {
+    console.error('sendMail error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
-
 
 const downloadAttachment = (req, res) => {
   try {
     const filename = req.params.filename;
-    const filepath = path.join(__dirname, '..', 'uploads', filename); 
-
-    if (!fs.existsSync(filepath)) {
+    const filepath = path.join(__dirname, '..', 'uploads', filename);
+    if (!fs.existsSync(filepath))
       return res.status(404).json({ error: 'File not found' });
-    }
-
     res.download(filepath);
-  } catch (error) {
-    console.error('Error downloading file:', error);
+  } catch (err) {
+    console.error('downloadAttachment error:', err);
     res.status(500).json({ error: 'Failed to download file' });
   }
 };
 
-module.exports = {
-  upload,
-  sendMail,
-  downloadAttachment
-};
+module.exports = { upload, sendMail, downloadAttachment };

@@ -393,6 +393,8 @@ function highlightSearch(text, searchTerm) {
                   onAddToLabel={(labelname) => {
                     selectedMails.forEach((id) => togglelabel(id, labelname));
                     clearSelection();
+                    alert("Label added successfully!"); 
+                    setShowBulkLabelDropdown(false);
                   }}
                   onRemoveFromLabel={(labelName) => {
                     selectedMails.forEach((id) => deleteMilFromLabel(id, labelName));
