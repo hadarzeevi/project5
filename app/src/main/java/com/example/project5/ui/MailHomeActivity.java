@@ -15,6 +15,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
+import com.bumptech.glide.Glide;
 import com.example.project5.R;
 
 public class MailHomeActivity extends AppCompatActivity {
@@ -40,6 +41,23 @@ public class MailHomeActivity extends AppCompatActivity {
 
         // כפתור תפריט
         ImageView ivMenu = findViewById(R.id.ivMenu);
+        ImageView ivAvatar = findViewById(R.id.ivAvatar);
+
+// דוגמה לשליפת תמונת הפרופיל מה-SharedPreferences או מהמשתמש
+        String userProfileImage = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
+                .getString("profileImage", null);
+
+        if (userProfileImage != null && !userProfileImage.isEmpty()) {
+            String url = "http://10.0.2.2:4000/" + userProfileImage.replace("\\", "/");
+            Glide.with(this)
+                    .load(url)
+                    .placeholder(R.drawable.ic_avatar)
+                    .error(R.drawable.ic_avatar)
+                    .into(ivAvatar);
+        } else {
+            ivAvatar.setImageResource(R.drawable.ic_avatar);
+        }
+
         FrameLayout sidebar = findViewById(R.id.sidebar);
         View sidebarOverlay = findViewById(R.id.sidebarOverlay);
 
