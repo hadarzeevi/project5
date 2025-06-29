@@ -133,111 +133,97 @@ public class Step3Fragment extends Fragment {
         // כאן שולחים את כל הנתונים לשרת (כולל תמונת פרופיל)
         sendRegistrationToServer();
     }
-
     private void sendRegistrationToServer() {
-        Log.d("DEBUG", "start OkHttp");
+        OkHttpClient client = new OkHttpClient();
 
         new Thread(() -> {
-            Log.d("DEBUG", "thread");
-
             try {
-                Log.d("DEBUG", "try");
+                MultipartBody.Builder builder = new MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("first_name", parentActivity.firstName)
+                        .addFormDataPart("last_name", parentActivity.lastName)
+                        .addFormDataPart("username", parentActivity.username)
+                        .addFormDataPart("birth_date", parentActivity.birthDate)
+                        .addFormDataPart("gender", parentActivity.gender)
+                        .addFormDataPart("mail", parentActivity.email)
+                        .addFormDataPart("password", parentActivity.password)
+                        .addFormDataPart("reWritePass", parentActivity.password);
 
-                // בנייה של בקשת POST multipart/form-data
-                String boundary = "===" + System.currentTimeMillis() + "===";
-                URL url = new URL("http://10.0.2.2:4000/api/users/register");
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                Log.d("DEBUG", "register clicked!");
-
-                connection.setDoOutput(true);
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-
-                DataOutputStream request = new DataOutputStream(connection.getOutputStream());
-                Log.d("DEBUG", "first_name = " + parentActivity.firstName);
-                Log.d("DEBUG", "last_name = " + parentActivity.lastName);
-                Log.d("DEBUG", "username = " + parentActivity.username);
-                Log.d("DEBUG", "birth_date = " + parentActivity.birthDate);
-                Log.d("DEBUG", "gender = " + parentActivity.gender);
-                Log.d("DEBUG", "mail = " + parentActivity.email);
-                Log.d("DEBUG", "password = " + parentActivity.password);
-                Log.d("DEBUG", "reWritePass = " + parentActivity.password); // בהנחה שזה אותו ערך
-                Log.d("DEBUG", "profileImageUri = " + (parentActivity.profileImageUri != null ? parentActivity.profileImageUri.toString() : "null"));
-
-                // הוספת שדות טקסט
-                writeFormField(request, boundary, "first_name", parentActivity.firstName);
-                writeFormField(request, boundary, "last_name", parentActivity.lastName);
-                writeFormField(request, boundary, "username", parentActivity.username);
-                writeFormField(request, boundary, "birth_date", parentActivity.birthDate);
-                writeFormField(request, boundary, "gender", parentActivity.gender);
-                writeFormField(request, boundary, "mail", parentActivity.email);
-                writeFormField(request, boundary, "password", parentActivity.password);
-                writeFormField(request, boundary, "reWritePass", parentActivity.reWritePass);
-
-
-                InputStream imageStream;
-
+                byte[] imageBytes;
                 if (parentActivity.profileImageUri != null) {
-                    imageStream = getContext().getContentResolver().openInputStream(parentActivity.profileImageUri);
-
+                    InputStream is = getContext().getContentResolver().openInputStream(parentActivity.profileImageUri);
+                    imageBytes = readBytes(is);
+                    is.close();
                 } else {
-                    // צור תמונת ברירת מחדל לפי האות הראשונה של המשתמש
-                    Log.d("DEBUG", "ENTER");
                     String firstLetter = parentActivity.username != null && !parentActivity.username.isEmpty()
                             ? parentActivity.username.substring(0, 1)
                             : "U";
                     Bitmap defaultBitmap = generateProfileBitmap(firstLetter);
-                    imageStream = bitmapToInputStream(defaultBitmap);
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    defaultBitmap.compress(Bitmap.CompressFormat.PNG, 100, bos);
+                    imageBytes = bos.toByteArray();
                 }
-                Log.d("DEBUG", "Writing file field with name: profileImage");
-//
-                writeFileField(request, boundary, "profileImage", "default.png", "image/png", imageStream);
-                imageStream.close();
 
+                builder.addFormDataPart(
+                        "profileImage",
+                        "profile.png",
+                        RequestBody.create(imageBytes, MediaType.parse("image/png"))
+                );
 
-                // סוף הפוסט
-                request.writeBytes("--" + boundary + "--\r\n");
-                request.flush();
-                request.close();
+                RequestBody requestBody = builder.build();
 
-                int responseCode = connection.getResponseCode();
-                InputStream responseStream = responseCode == 200 ?
-                        connection.getInputStream() : connection.getErrorStream();
+                Request request = new Request.Builder()
+                        .url("http://10.0.2.2:4000/api/users/register")
+                        .post(requestBody)
+                        .build();
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(responseStream));
-                String inputLine;
-                StringBuilder response = new StringBuilder();
-                while ((inputLine = in.readLine()) != null) {
-                    response.append(inputLine);
-                }
-                in.close();
-                Log.d("DEBUG", "" + responseCode);
+                client.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        e.printStackTrace();
+                        requireActivity().runOnUiThread(() ->
+                                Toast.makeText(getContext(), "Network error: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                        );
+                    }
 
-                if (responseCode == 200) {
-                    Log.d("DEBUG", " if!");
-
-                    // הצלחה - חזרה ל-login (ב-UI thread)
-                    requireActivity().runOnUiThread(() -> {
-                        Toast.makeText(getContext(), "Registration successful!", Toast.LENGTH_SHORT).show();
-                        requireActivity().finish();  // סוגר את המסך, או לנווט ל-login
-                    });
-                } else {
-                    Log.d("DEBUG", " else!");
-                    requireActivity().runOnUiThread(() -> {
-
-
-                        Toast.makeText(getContext(), "Registration failed: " + response.toString(), Toast.LENGTH_LONG).show();
-                    });
-                }
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        String resBody = response.body().string();
+                        Log.d("DEBUG", "Response: " + resBody);
+                        if (response.isSuccessful()) {
+                            requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(getContext(), "Registration successful!", Toast.LENGTH_SHORT).show();
+                                requireActivity().finish();
+                            });
+                        } else {
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(getContext(), "Registration failed: " + resBody, Toast.LENGTH_LONG).show()
+                            );
+                        }
+                    }
+                });
 
             } catch (Exception e) {
                 e.printStackTrace();
-                requireActivity().runOnUiThread(() -> {
-                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
-                });
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_LONG).show()
+                );
             }
         }).start();
     }
+    private byte[] readBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+        int bufferSize = 4096;
+        byte[] buffer = new byte[bufferSize];
+        int len;
+        while ((len = inputStream.read(buffer)) != -1) {
+            byteBuffer.write(buffer, 0, len);
+        }
+        return byteBuffer.toByteArray();
+    }
+
+
+
 //        new Thread(() -> {
 //            try {
 //                OkHttpClient client = new OkHttpClient();
