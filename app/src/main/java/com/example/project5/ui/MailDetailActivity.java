@@ -1,17 +1,15 @@
 package com.example.project5.ui;
 
-import android.content.Intent;
-import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
-
+import com.bumptech.glide.Glide;
 import com.example.project5.R;
 import com.example.project5.model.Mail;
 import org.json.JSONObject;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
 
 public class MailDetailActivity extends AppCompatActivity {
@@ -37,7 +35,6 @@ public class MailDetailActivity extends AppCompatActivity {
         btnForward = findViewById(R.id.btnForward);
         btnDelete = findViewById(R.id.btnDelete);
 
-        // קבלת המייל שהועבר מהמסך הקודם
         try {
             String mailJson = getIntent().getStringExtra("MAIL_JSON");
             JSONObject json = new JSONObject(mailJson);
@@ -50,43 +47,50 @@ public class MailDetailActivity extends AppCompatActivity {
 
         ivStar.setOnClickListener(v -> {
             mail.isStarred = !mail.isStarred;
-            ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star);
-            // עדכון בשרת בהמשך
-            //             ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star_filled : R.drawable.ic_star);
+            ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
+            Toast.makeText(this, mail.isStarred ? "Starred" : "Unstarred", Toast.LENGTH_SHORT).show();
+            // TODO: עדכון לשרת במידת הצורך
         });
 
         btnReply.setOnClickListener(v -> Toast.makeText(this, "Reply clicked", Toast.LENGTH_SHORT).show());
         btnForward.setOnClickListener(v -> Toast.makeText(this, "Forward clicked", Toast.LENGTH_SHORT).show());
         btnDelete.setOnClickListener(v -> {
-            // מחיקה מהשרת בהמשך
             Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show();
             finish();
         });
     }
 
     private void loadMailData() {
-        tvSubject.setText(mail.subject);
-        tvBody.setText(mail.preview);
-        tvSenderName.setText(mail.from);
-        tvSenderEmail.setText(mail.from);
+        tvSubject.setText(mail.subject != null ? mail.subject : "(No Subject)");
+        tvBody.setText(mail.body != null ? mail.body : "(No Content)");
+        tvSenderEmail.setText(mail.fromMail != null ? mail.fromMail : "(Unknown Sender)");
         tvDate.setText(formatDate(mail.date));
 
-        if (mail.isStarred) {
-            ivStar.setImageResource(R.drawable.ic_star);
-            // ic_star_filled ----?
-        } else {
-            ivStar.setImageResource(R.drawable.ic_star);
+        String senderName = (mail.firstName != null && mail.lastName != null)
+                ? mail.firstName + " " + mail.lastName
+                : mail.fromMail != null ? mail.fromMail : "(Unknown)";
+        tvSenderName.setText(senderName);
+
+        // הצגת תמונת פרופיל בלבד
+        if (mail.profileImage != null && !mail.profileImage.isEmpty()) {
+            String url = "http://10.0.2.2:4000/" + mail.profileImage.replace("\\", "/");
+            Glide.with(this)
+                    .load(url)
+                    .placeholder(R.drawable.ic_avatar)
+                    .into(ivAvatar);
         }
 
-        // אות ראשונה של השולח כאווטאר
-        String firstLetter = mail.from != null && !mail.from.isEmpty()
-                ? mail.from.substring(0, 1).toUpperCase(Locale.ROOT)
-                : "?";
-        TextView tvLetter = findViewById(R.id.tvAvatarLetter);
-        tvLetter.setText(firstLetter);
+        ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
     }
 
     private String formatDate(String dateStr) {
-        return dateStr; // ניתן להמיר לתאריך קריא אם תצטרכי
+        try {
+            SimpleDateFormat serverFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Date date = serverFormat.parse(dateStr);
+            SimpleDateFormat displayFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+            return displayFormat.format(date);
+        } catch (Exception e) {
+            return dateStr;
+        }
     }
 }
