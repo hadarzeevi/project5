@@ -1,7 +1,11 @@
 package com.example.project5.model;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Mail {
     public String id;
@@ -21,6 +25,7 @@ public class Mail {
     public String mail;
     public String profileImage;
     public String username;
+    public List<String> label = new ArrayList<>();
 
     public String category;
     public static Mail fromJson(JSONObject obj) throws JSONException {
@@ -36,6 +41,12 @@ public class Mail {
         mail.isRead = obj.optBoolean("isRead", false);
         mail.hasAttachment = obj.optBoolean("hasAttachment", false);
         mail.category = obj.optString("category", "");
+        if (obj.has("label")) {
+            JSONArray labelsArray = obj.getJSONArray("label");
+            for (int i = 0; i < labelsArray.length(); i++) {
+                mail.label.add(labelsArray.getString(i));
+            }
+        }
 
         if (obj.has("sender")) {
             JSONObject sender = obj.getJSONObject("sender");
@@ -61,6 +72,7 @@ public class Mail {
             obj.put("isRead", isRead);
             obj.put("hasAttachment", hasAttachment);
             obj.put("category", category);
+            obj.put("label", new JSONArray(label));
 
             JSONObject sender = new JSONObject();
             sender.put("first_name", firstName);
