@@ -16,7 +16,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- שורת כפתורי עליונה -->
+        <!-- שורת כפתורים עליונה -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -28,7 +28,6 @@
             android:layout_marginBottom="8dp"
             android:weightSum="1">
 
-            <!-- איקס בצד שמאל -->
             <ImageButton
                 android:id="@+id/btnClose"
                 android:layout_width="wrap_content"
@@ -44,18 +43,15 @@
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
-            <!-- מחק -->
             <ImageButton
                 android:id="@+id/btnClear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_delete"
-
                 android:contentDescription="Clear"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 card_view:tint="#A7A9AD" />
 
-            <!-- שלח -->
             <ImageButton
                 android:id="@+id/btnSend"
                 android:layout_width="wrap_content"
@@ -67,7 +63,7 @@
                 card_view:tint="#A7A9AD" />
         </LinearLayout>
 
-        <!-- שדה TO -->
+        <!-- TO -->
         <EditText
             android:id="@+id/etTo"
             android:layout_width="match_parent"
@@ -140,9 +136,58 @@
             android:inputType="textMultiLine"
             android:padding="10dp" />
 
+        <!-- Attach File Button -->
+        <ImageButton
+            android:id="@+id/btnAttach"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="8dp"
+            android:layout_marginLeft="150dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Attach File"
+            android:src="@drawable/ic_attachment" />
+
+        <!-- הצגת הקובץ המצורף -->
+        <LinearLayout
+            android:id="@+id/attachmentContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_attachment"
+                android:contentDescription="Attachment" />
+
+            <TextView
+                android:id="@+id/tvAttachmentName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="attachment.pdf (1.2 MB)"
+                android:textSize="14sp"
+                android:textColor="#333" />
+
+            <ImageButton
+                android:id="@+id/btnRemoveAttachment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/ic_delete"
+                android:contentDescription="Remove Attachment"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                card_view:tint="#F44336" />
+        </LinearLayout>
+
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
+            android:layout_marginTop="8dp"
             android:background="#BDBDBD" />
 
     </LinearLayout>
