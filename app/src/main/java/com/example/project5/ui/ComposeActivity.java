@@ -3,13 +3,16 @@ package com.example.project5.ui;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
-import android.util.Log;
+import android.provider.OpenableColumns;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,11 +20,14 @@ import com.example.project5.R;
 
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
+import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -30,11 +36,16 @@ import okhttp3.Response;
 public class ComposeActivity extends Activity {
 
     private EditText etTo, etSubject, etBody;
-    private ImageButton btnSend, btnClear, btnClose;
-    private TextView tvSenderEmail;
+    private ImageButton btnSend, btnClear, btnClose, btnAttach, btnRemoveAttachment;
+    private TextView tvSenderEmail, tvAttachmentName;
+    private LinearLayout attachmentContainer;
+
     private final OkHttpClient client = new OkHttpClient();
     private final String SPAM_CHECK_URL = "http://10.0.2.2:4000/api/blacklist/check";
-    private final String MAIL_SEND_URL = "http://10.0.2.2:4000/api/mails";
+    private final String MAIL_SEND_URL = "http://10.0.2.2:4000/api/files/send";
+
+    private static final int PICK_FILE_REQUEST_CODE = 1;
+    private Uri selectedFileUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,11 +60,15 @@ public class ComposeActivity extends Activity {
         etSubject = findViewById(R.id.etSubject);
         etBody = findViewById(R.id.etBody);
         tvSenderEmail = findViewById(R.id.tvSenderEmail);
-
         btnSend = findViewById(R.id.btnSend);
         btnClear = findViewById(R.id.btnClear);
         btnClose = findViewById(R.id.btnClose);
+        btnAttach = findViewById(R.id.btnAttach);
+        attachmentContainer = findViewById(R.id.attachmentContainer);
+        tvAttachmentName = findViewById(R.id.tvAttachmentName);
+        btnRemoveAttachment = findViewById(R.id.btnRemoveAttachment);
 
+        // תמיכה במענה למייל
         Intent intent = getIntent();
         if (intent != null) {
             String replyTo = intent.getStringExtra("replyTo");
@@ -72,14 +87,42 @@ public class ComposeActivity extends Activity {
 
         btnSend.setOnClickListener(v -> sendMail(token));
 
+        btnAttach.setOnClickListener(v -> {
+            Intent pickFile = new Intent(Intent.ACTION_GET_CONTENT);
+            pickFile.setType("*/*");
+            startActivityForResult(Intent.createChooser(pickFile, "Select File"), PICK_FILE_REQUEST_CODE);
+        });
+
+        btnRemoveAttachment.setOnClickListener(v -> {
+            selectedFileUri = null;
+            attachmentContainer.setVisibility(View.GONE);
+            Toast.makeText(this, "הקובץ הוסר", Toast.LENGTH_SHORT).show();
+        });
+
         View.OnClickListener goHome = v -> {
             Intent intent2 = new Intent(ComposeActivity.this, MailHomeActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(intent);
+            intent2.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            startActivity(intent2);
         };
 
         btnClear.setOnClickListener(goHome);
         btnClose.setOnClickListener(goHome);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK && data != null) {
+            selectedFileUri = data.getData();
+            if (selectedFileUri != null) {
+                String fileName = getFileName(selectedFileUri);
+                long fileSize = getFileSize(selectedFileUri);
+                String formattedSize = formatFileSize(fileSize);
+                tvAttachmentName.setText(fileName + " (" + formattedSize + ")");
+                attachmentContainer.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "קובץ נבחר לצירוף", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void sendMail(String token) {
@@ -116,16 +159,27 @@ public class ComposeActivity extends Activity {
                         JSONObject result = new JSONObject(response.body().string());
                         boolean isSpam = result.optBoolean("spam", false);
 
-                        JSONObject mailPayload = new JSONObject();
-                        mailPayload.put("sendTo", to);
-                        mailPayload.put("subject", subject);
-                        mailPayload.put("body", body);
-                        mailPayload.put("isSpam", isSpam);
+                        MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM)
+                                .addFormDataPart("sendTo", to)
+                                .addFormDataPart("subject", subject)
+                                .addFormDataPart("body", body)
+                                .addFormDataPart("isSpam", String.valueOf(isSpam));
 
-                        RequestBody mailBody = RequestBody.create(mailPayload.toString(), MediaType.get("application/json"));
+                        if (selectedFileUri != null) {
+                            String fileName = getFileName(selectedFileUri);
+                            InputStream inputStream = getContentResolver().openInputStream(selectedFileUri);
+                            byte[] fileBytes = getBytes(inputStream);
+
+                            RequestBody fileBody = RequestBody.create(fileBytes,
+                                    MediaType.parse(getContentResolver().getType(selectedFileUri)));
+                            builder.addFormDataPart("attachments", fileName, fileBody);
+                        }
+
+                        RequestBody requestBody = builder.build();
+
                         Request mailRequest = new Request.Builder()
                                 .url(MAIL_SEND_URL)
-                                .post(mailBody)
+                                .post(requestBody)
                                 .addHeader("Authorization", "Bearer " + token)
                                 .build();
 
@@ -139,7 +193,7 @@ public class ComposeActivity extends Activity {
                             public void onResponse(Call call, Response response) throws IOException {
                                 runOnUiThread(() -> {
                                     if (response.isSuccessful()) {
-                                        Toast.makeText(ComposeActivity.this, "המייל נשלח!", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(ComposeActivity.this, "המייל נשלח בהצלחה!", Toast.LENGTH_SHORT).show();
                                         Intent intent = new Intent(ComposeActivity.this, MailHomeActivity.class);
                                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                                         startActivity(intent);
@@ -149,6 +203,7 @@ public class ComposeActivity extends Activity {
                                 });
                             }
                         });
+
                     } catch (Exception e) {
                         runOnUiThread(() -> Toast.makeText(ComposeActivity.this, "שגיאה פנימית", Toast.LENGTH_SHORT).show());
                     }
@@ -158,5 +213,54 @@ public class ComposeActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, "שגיאה בבניית הבקשה", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private String getFileName(Uri uri) {
+        String result = null;
+        if (uri.getScheme().equals("content")) {
+            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
+                }
+            } finally {
+                cursor.close();
+            }
+        }
+        if (result == null) {
+            result = uri.getPath();
+            int cut = result.lastIndexOf('/');
+            if (cut != -1) {
+                result = result.substring(cut + 1);
+            }
+        }
+        return result;
+    }
+
+    private long getFileSize(Uri uri) {
+        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+        int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+        cursor.moveToFirst();
+        long size = cursor.getLong(sizeIndex);
+        cursor.close();
+        return size;
+    }
+
+    private String formatFileSize(long size) {
+        if (size <= 0) return "0 B";
+        final String[] units = new String[]{"B", "KB", "MB", "GB", "TB"};
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
+    }
+
+    private byte[] getBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+        int bufferSize = 1024;
+        byte[] buffer = new byte[bufferSize];
+        int len;
+        while ((len = inputStream.read(buffer)) != -1) {
+            byteBuffer.write(buffer, 0, len);
+        }
+        return byteBuffer.toByteArray();
     }
 }
