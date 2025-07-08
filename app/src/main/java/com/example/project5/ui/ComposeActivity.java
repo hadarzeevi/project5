@@ -54,6 +54,17 @@ public class ComposeActivity extends Activity {
         btnClear = findViewById(R.id.btnClear);
         btnClose = findViewById(R.id.btnClose);
 
+        Intent intent = getIntent();
+        if (intent != null) {
+            String replyTo = intent.getStringExtra("replyTo");
+            String replySubject = intent.getStringExtra("replySubject");
+            String replyBody = intent.getStringExtra("replyBody");
+
+            if (replyTo != null) etTo.setText(replyTo);
+            if (replySubject != null) etSubject.setText(replySubject);
+            if (replyBody != null) etBody.setText(replyBody);
+        }
+
         SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
         String senderEmail = prefs.getString("email", "unknown@example.com");
         String token = prefs.getString("token", null);
@@ -62,7 +73,7 @@ public class ComposeActivity extends Activity {
         btnSend.setOnClickListener(v -> sendMail(token));
 
         View.OnClickListener goHome = v -> {
-            Intent intent = new Intent(ComposeActivity.this, MailHomeActivity.class);
+            Intent intent2 = new Intent(ComposeActivity.this, MailHomeActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             startActivity(intent);
         };

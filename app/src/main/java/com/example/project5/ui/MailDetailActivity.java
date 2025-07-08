@@ -68,8 +68,26 @@ public class MailDetailActivity extends AppCompatActivity {
         });
 
         // כפתורים
-        btnReply.setOnClickListener(v -> Toast.makeText(this, "מענה...", Toast.LENGTH_SHORT).show());
-        btnForward.setOnClickListener(v -> Toast.makeText(this, "העברה...", Toast.LENGTH_SHORT).show());
+        btnReply.setOnClickListener(v -> {
+            Intent intent = new Intent(MailDetailActivity.this, ComposeActivity.class);
+            intent.putExtra("replyTo", mail.fromMail); // כתובת אימייל של השולח
+            intent.putExtra("replySubject", "Re: " + (mail.subject != null ? mail.subject : ""));
+            intent.putExtra("replyBody", "\n\n---------- original text ----------\n" +
+                    "from: " + mail.firstName + " " + mail.lastName + " <" + mail.fromMail + ">\n" +
+                    "date: " + formatDate(mail.date) + "\n\n" +
+                    (mail.body != null ? mail.body : ""));
+            startActivity(intent);
+        });
+        btnForward.setOnClickListener(v -> {
+            Intent intent = new Intent(MailDetailActivity.this, ComposeActivity.class);
+            intent.putExtra("replyTo", ""); // To ריק – כי זה העברה
+            intent.putExtra("replySubject", "Fwd: " + (mail.subject != null ? mail.subject : ""));
+            intent.putExtra("replyBody", "\n\n---------- massage forward ----------\n" +
+                    "from: " + mail.firstName + " " + mail.lastName + " <" + mail.fromMail + ">\n" +
+                    "date: " + formatDate(mail.date) + "\n\n" +
+                    (mail.body != null ? mail.body : ""));
+            startActivity(intent);
+        });
     }
 
     private void loadMailData() {
