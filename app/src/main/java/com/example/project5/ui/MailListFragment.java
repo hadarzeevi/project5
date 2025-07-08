@@ -1,6 +1,7 @@
 package com.example.project5.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -29,8 +30,12 @@ public class MailListFragment extends Fragment {
     private RecyclerView recyclerView;
     private MailAdapter adapter;
     private ProgressBar progressBar;
+    private final ArrayList<Mail> allMails = new ArrayList<>();   // כל המיילים שהתקבלו
+
     private final ArrayList<Mail> mailList = new ArrayList<>();
     private final String API_URL = "http://10.0.2.2:4000/api/mails"; // שנה לכתובת השרת שלך
+    private String currentCategory = "inbox"; // ברירת מחדל
+    private String selectedLabel = null;  // אם תרצי בהמשך
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -47,7 +52,14 @@ public class MailListFragment extends Fragment {
         adapter = new MailAdapter(
                 mailList,
                 mail -> {
-                    Toast.makeText(getContext(), "Clicked: " + mail.subject, Toast.LENGTH_SHORT).show();
+                    try {
+                        Intent intent = new Intent(getContext(), MailDetailActivity.class);
+                        JSONObject json = mail.toJson();  // ודאי שקיימת פונקציה כזו במודל שלך
+                        intent.putExtra("MAIL_JSON", json.toString());
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), "שגיאה בפתיחת המייל", Toast.LENGTH_SHORT).show();
+                    }
                 },
                 mail -> {
                     mail.isStarred = !mail.isStarred;
@@ -56,18 +68,24 @@ public class MailListFragment extends Fragment {
         );
 
         recyclerView.setAdapter(adapter);
-        loadMails();
+        loadMails(currentCategory); // ← נטען את אינבוקס כברירת מחדל
 
         return view;
     }
 
 
-    private void loadMails() {
+    private void loadMails(String category) {
         progressBar.setVisibility(View.VISIBLE);
 
         new Thread(() -> {
             try {
-                URL url = new URL(API_URL);
+                String urlStr = "http://10.0.2.2:4000/api/mails";
+                if (category != null && !category.isEmpty()) {
+                    urlStr += "?category=" + category.toLowerCase();
+                    Log.d("MailListFragment", "Full API URL: " + urlStr);
+                }
+
+                URL url = new URL(urlStr);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
 
@@ -88,18 +106,23 @@ public class MailListFragment extends Fragment {
 
                 JSONObject responseObject = new JSONObject(json.toString());
                 JSONArray jsonArray = responseObject.getJSONArray("mails");
+                allMails.clear();
                 mailList.clear();
 
                 for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     Mail mail = Mail.fromJson(obj);
-                    mailList.add(mail);
+                    allMails.add(mail);
 
-                    // שליפת פרטי השולח לפי mail.from
+                    // טעינת פרטי השולח
                     if (mail.from != null && !mail.from.isEmpty()) {
                         fetchSenderDetails(mail.from, mail);
                     }
                 }
+
+// סינון מקומי לפי קטגוריה נבחרת
+                filterAndDisplayMails();
+
 
                 requireActivity().runOnUiThread(() -> {
                     adapter.notifyDataSetChanged();
@@ -113,6 +136,33 @@ public class MailListFragment extends Fragment {
                 });
             }
         }).start();
+    }
+
+    private void filterAndDisplayMails() {
+        mailList.clear();
+
+        for (Mail mail : allMails) {
+            String cat = currentCategory != null ? currentCategory.toLowerCase() : null;
+
+            if ("starred".equals(cat)) {
+                if (mail.isStarred) {
+                    mailList.add(mail);
+                }
+            } else if (cat != null) {
+                if (mail.category != null && mail.category.equalsIgnoreCase(cat)) {
+                    mailList.add(mail);
+                }
+
+//            } else if (selectedLabel != null) {
+//                if (mail.label != null && mail.label.contains(selectedLabel)) {
+//                    mailList.add(mail);
+//                }
+            } else {
+                mailList.add(mail); // ללא סינון
+            }
+        }
+
+        requireActivity().runOnUiThread(() -> adapter.notifyDataSetChanged());
     }
 
     // שליפת פרטי השולח ועדכון ה־Mail
@@ -155,4 +205,9 @@ public class MailListFragment extends Fragment {
             }
         }).start();
     }
+    public void setCategory(String category) {
+        currentCategory = category;
+        loadMails(currentCategory);
+    }
+
 }
