@@ -19,6 +19,7 @@ import com.example.project5.R;
 public class MailHomeActivity extends AppCompatActivity {
 
     private boolean isDarkMode = false;
+    private MailListFragment mailListFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +29,8 @@ public class MailHomeActivity extends AppCompatActivity {
         Log.d("DEBUG", "MailHomeActivity started");
 
         // טען את רשימת המיילים למסך הראשי
-        loadFragment(R.id.mailContentContainer, new MailListFragment());
+        mailListFragment = new MailListFragment();
+        loadFragment(R.id.mailContentContainer, mailListFragment);
 
         // כפתור כתיבת מייל
         Button btnCompose = findViewById(R.id.btnComposeFloating);
@@ -120,4 +122,8 @@ public class MailHomeActivity extends AppCompatActivity {
         isDarkMode = !isDarkMode;
         recreate();
     }
+    public MailListFragment getMailListFragment() {
+        return mailListFragment;
+    }
+
 }

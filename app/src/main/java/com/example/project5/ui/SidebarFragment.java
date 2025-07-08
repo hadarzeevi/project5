@@ -3,6 +3,7 @@ package com.example.project5.ui;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +23,9 @@ import androidx.fragment.app.Fragment;
 import com.example.project5.R;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SidebarFragment extends Fragment {
 
@@ -54,6 +57,14 @@ public class SidebarFragment extends Fragment {
         categoriesContainer.removeAllViews();
 
         String[] categories = {"Inbox", "Starred", "Sent", "Drafts", "Spam", "Trash"};
+        Map<String, String> categoryMap = new HashMap<>();
+        categoryMap.put("Inbox", "inbox");
+        categoryMap.put("Starred", "starred");
+        categoryMap.put("Sent", "sent");
+        categoryMap.put("Drafts", "drafts");
+        categoryMap.put("Spam", "spam");
+        categoryMap.put("Trash", "trash");
+
         int[] icons = {R.drawable.ic_inbox, R.drawable.ic_star, R.drawable.ic_send, R.drawable.ic_draft, R.drawable.ic_report, R.drawable.ic_delete};
 
         for (int i = 0; i < categories.length; i++) {
@@ -76,6 +87,14 @@ public class SidebarFragment extends Fragment {
                 v.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.selectedCategory));
                 ((TextView) v).setTypeface(null, Typeface.BOLD);
                 selectedCategoryView = v;
+                MailHomeActivity activity = (MailHomeActivity) requireActivity();
+                MailListFragment listFragment = activity.getMailListFragment();
+                if (listFragment != null) {
+                    String mappedCategory = categoryMap.getOrDefault(category, "inbox");
+                    listFragment.setCategory(mappedCategory);
+                    Log.d("MailListFragment", "Loading category: " + category);
+
+                }
                 Toast.makeText(getContext(), category + " selected", Toast.LENGTH_SHORT).show();
 
                 if (listener != null) {
