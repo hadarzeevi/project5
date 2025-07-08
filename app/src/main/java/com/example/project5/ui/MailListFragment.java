@@ -26,6 +26,7 @@ import java.net.URL;
 import java.util.ArrayList;
 
 public class MailListFragment extends Fragment {
+    private String searchQuery = "";
 
     private RecyclerView recyclerView;
     private MailAdapter adapter;
@@ -137,28 +138,43 @@ public class MailListFragment extends Fragment {
             }
         }).start();
     }
-
     private void filterAndDisplayMails() {
         mailList.clear();
 
         for (Mail mail : allMails) {
             String cat = currentCategory != null ? currentCategory.toLowerCase() : null;
+            String query = searchQuery != null ? searchQuery.toLowerCase().trim() : null;
 
+            boolean matchesCategory = false;
+            boolean matchesLabel = false;
+            boolean matchesSearch = false;
+
+            // סינון לפי קטגוריה
             if ("starred".equals(cat)) {
-                if (mail.isStarred) {
-                    mailList.add(mail);
-                }
+                matchesCategory = mail.isStarred;
             } else if (cat != null) {
-                if (mail.category != null && mail.category.equalsIgnoreCase(cat)) {
-                    mailList.add(mail);
-                }
-
-//            } else if (selectedLabel != null) {
-//                if (mail.label != null && mail.label.contains(selectedLabel)) {
-//                    mailList.add(mail);
-//                }
+                matchesCategory = mail.category != null && mail.category.equalsIgnoreCase(cat);
             } else {
-                mailList.add(mail); // ללא סינון
+                matchesCategory = true;
+            }
+
+            // סינון לפי תווית
+            if (selectedLabel != null) {
+                matchesLabel = mail.label != null && mail.label.contains(selectedLabel);
+            } else {
+                matchesLabel = true;
+            }
+
+            // סינון לפי טקסט חיפוש
+            if (query != null && !query.isEmpty()) {
+                String combinedText = (mail.subject + " " + mail.body + " " + mail.fromMail).toLowerCase();
+                matchesSearch = combinedText.contains(query);
+            } else {
+                matchesSearch = true;
+            }
+
+            if (matchesCategory && matchesLabel && matchesSearch) {
+                mailList.add(mail);
             }
         }
 
@@ -206,8 +222,21 @@ public class MailListFragment extends Fragment {
         }).start();
     }
     public void setCategory(String category) {
-        currentCategory = category;
-        loadMails(currentCategory);
+        this.currentCategory = category;
+        this.selectedLabel = null;
+        filterAndDisplayMails();
     }
+
+    public void setLabel(String label) {
+        this.selectedLabel = label;
+        this.currentCategory = null;
+        filterAndDisplayMails();
+    }
+
+    public void setSearchQuery(String query) {
+        this.searchQuery = query.toLowerCase();
+        adapter.setSearchQuery(query);  // כאן את מעדכנת את האדפטר כדי שידע להדגיש
+        filterAndDisplayMails();     }
+
 
 }

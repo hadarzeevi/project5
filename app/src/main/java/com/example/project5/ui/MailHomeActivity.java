@@ -2,9 +2,12 @@ package com.example.project5.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 
@@ -41,6 +44,19 @@ public class MailHomeActivity extends AppCompatActivity {
 
         // טעינת תמונת פרופיל
         ImageView ivAvatar = findViewById(R.id.ivAvatar);
+        EditText etSearch = findViewById(R.id.etSearch);
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (mailListFragment != null) {
+                    mailListFragment.setSearchQuery(s.toString());
+                }
+            }
+
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
         loadUserProfileImage(ivAvatar);
 
         // פתיחת תפריט פרופיל בלחיצה על תמונת הפרופיל

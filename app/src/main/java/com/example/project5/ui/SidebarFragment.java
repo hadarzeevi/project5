@@ -1,6 +1,7 @@
 package com.example.project5.ui;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.Log;
@@ -21,7 +22,9 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.project5.R;
-
+import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflect.TypeToken;
+import com.google.gson.Gson;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +49,7 @@ public class SidebarFragment extends Fragment {
         labelsContainer = view.findViewById(R.id.labelContainer);
         btnAddLabel = view.findViewById(R.id.btnAddLabel);
         btnAddLabel.setOnClickListener(v -> promptAddLabel());
+        loadLabelsFromPrefs();   // ← קודם נטען מהאחסון המקומי
 
         loadCategories();
         loadLabels();
@@ -117,21 +121,22 @@ public class SidebarFragment extends Fragment {
 
     private void promptAddLabel() {
         EditText input = new EditText(getContext());
-        input.setHint("הכנס שם תווית");
+        input.setHint("Enter label name");
 
         new android.app.AlertDialog.Builder(getContext())
-                .setTitle("תווית חדשה")
+                .setTitle("new label")
                 .setView(input)
-                .setPositiveButton("הוסף", (dialog, which) -> {
+                .setPositiveButton("add", (dialog, which) -> {
                     String newLabel = input.getText().toString().trim();
                     if (!newLabel.isEmpty() && !userLabels.contains(newLabel)) {
                         userLabels.add(newLabel);
+                        saveLabelsToPrefs(); // ← כאן
                         addLabelToUI(newLabel);
                     } else {
                         Toast.makeText(getContext(), "תווית קיימת או ריקה", Toast.LENGTH_SHORT).show();
                     }
                 })
-                .setNegativeButton("ביטול", null)
+                .setNegativeButton("cancel", null)
                 .show();
     }
 
@@ -155,8 +160,17 @@ public class SidebarFragment extends Fragment {
             v.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.selectedCategory));
             ((TextView) v).setTypeface(null, Typeface.BOLD);
             selectedCategoryView = v;
-            Toast.makeText(getContext(), label + " selected", Toast.LENGTH_SHORT).show();
+
+            // עדכון המסך הראשי לסינון לפי תווית
+            MailHomeActivity activity = (MailHomeActivity) requireActivity();
+            MailListFragment listFragment = activity.getMailListFragment();
+            if (listFragment != null) {
+                listFragment.setLabel(label); // ← הנה הקריאה החשובה!
+            }
+
+            Toast.makeText(getContext(), "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
         });
+
 
         ImageView deleteIcon = new ImageView(getContext());
         deleteIcon.setImageResource(R.drawable.ic_delete);
@@ -164,6 +178,8 @@ public class SidebarFragment extends Fragment {
         deleteIcon.setOnClickListener(v -> {
             labelsContainer.removeView(labelItem);
             userLabels.remove(label);
+            saveLabelsToPrefs(); // ← כאן
+
             Toast.makeText(getContext(), "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
         });
 
@@ -177,6 +193,21 @@ public class SidebarFragment extends Fragment {
         if (context instanceof OnCategorySelectedListener) {
             listener = (OnCategorySelectedListener) context;
         }
+    }
+    private void saveLabelsToPrefs() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString("userLabels", new Gson().toJson(userLabels));
+        editor.apply();
+    }
+
+    private void loadLabelsFromPrefs() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        String json = prefs.getString("userLabels", "[]");
+        Type type = new TypeToken<List<String>>(){}.getType();
+        List<String> savedLabels = new Gson().fromJson(json, type);
+        userLabels.clear();
+        userLabels.addAll(savedLabels);
     }
 
 }
