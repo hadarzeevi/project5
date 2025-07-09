@@ -8,7 +8,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -24,7 +23,16 @@ import androidx.fragment.app.Fragment;
 import com.example.project5.R;
 import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +46,7 @@ public class SidebarFragment extends Fragment {
     private OnCategorySelectedListener listener;
 
     private final List<String> userLabels = new ArrayList<>();
+    private final Map<String, String> labelIdMap = new HashMap<>();
     private View selectedCategoryView = null;
 
     @Nullable
@@ -49,10 +58,9 @@ public class SidebarFragment extends Fragment {
         labelsContainer = view.findViewById(R.id.labelContainer);
         btnAddLabel = view.findViewById(R.id.btnAddLabel);
         btnAddLabel.setOnClickListener(v -> promptAddLabel());
-        loadLabelsFromPrefs();   // ← קודם נטען מהאחסון המקומי
 
+        fetchLabelsFromServer();
         loadCategories();
-        loadLabels();
 
         return view;
     }
@@ -106,7 +114,6 @@ public class SidebarFragment extends Fragment {
                 }
             });
 
-
             categoriesContainer.addView(tv);
         }
     }
@@ -130,8 +137,9 @@ public class SidebarFragment extends Fragment {
                     String newLabel = input.getText().toString().trim();
                     if (!newLabel.isEmpty() && !userLabels.contains(newLabel)) {
                         userLabels.add(newLabel);
-                        saveLabelsToPrefs(); // ← כאן
+                        saveLabelsToPrefs();
                         addLabelToUI(newLabel);
+                        sendLabelToServer(newLabel);
                     } else {
                         Toast.makeText(getContext(), "תווית קיימת או ריקה", Toast.LENGTH_SHORT).show();
                     }
@@ -161,16 +169,14 @@ public class SidebarFragment extends Fragment {
             ((TextView) v).setTypeface(null, Typeface.BOLD);
             selectedCategoryView = v;
 
-            // עדכון המסך הראשי לסינון לפי תווית
             MailHomeActivity activity = (MailHomeActivity) requireActivity();
             MailListFragment listFragment = activity.getMailListFragment();
             if (listFragment != null) {
-                listFragment.setLabel(label); // ← הנה הקריאה החשובה!
+                listFragment.setLabel(label);
             }
 
             Toast.makeText(getContext(), "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
         });
-
 
         ImageView deleteIcon = new ImageView(getContext());
         deleteIcon.setImageResource(R.drawable.ic_delete);
@@ -178,7 +184,15 @@ public class SidebarFragment extends Fragment {
         deleteIcon.setOnClickListener(v -> {
             labelsContainer.removeView(labelItem);
             userLabels.remove(label);
-            saveLabelsToPrefs(); // ← כאן
+            saveLabelsToPrefs();
+            Log.d("DEBUG", "מנסה למחוק תווית מהשרת: " + label);
+
+            String labelId = labelIdMap.get(label);
+            if (labelId != null) {
+                deleteLabelFromServerById(labelId);
+            } else {
+                Log.e("DEBUG", "לא נמצא ID עבור התווית: " + label);
+            }
 
             Toast.makeText(getContext(), "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
         });
@@ -187,6 +201,7 @@ public class SidebarFragment extends Fragment {
         labelItem.addView(deleteIcon);
         labelsContainer.addView(labelItem);
     }
+
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
@@ -194,6 +209,7 @@ public class SidebarFragment extends Fragment {
             listener = (OnCategorySelectedListener) context;
         }
     }
+
     private void saveLabelsToPrefs() {
         SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -201,13 +217,108 @@ public class SidebarFragment extends Fragment {
         editor.apply();
     }
 
-    private void loadLabelsFromPrefs() {
-        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-        String json = prefs.getString("userLabels", "[]");
-        Type type = new TypeToken<List<String>>(){}.getType();
-        List<String> savedLabels = new Gson().fromJson(json, type);
-        userLabels.clear();
-        userLabels.addAll(savedLabels);
+    private void fetchLabelsFromServer() {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/labels");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+
+                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                reader.close();
+
+                JSONArray jsonArray = new JSONArray(sb.toString());
+                userLabels.clear();
+                labelIdMap.clear();
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject obj = jsonArray.getJSONObject(i);
+                    String label = obj.getString("name");
+                    String id = obj.getString("_id");
+                    userLabels.add(label);
+                    labelIdMap.put(label, id);
+                }
+
+                requireActivity().runOnUiThread(this::loadLabels);
+
+            } catch (Exception e) {
+                Log.e("Labels", "שגיאה ב-fetchLabelsFromServer: " + e.getMessage());
+            }
+        }).start();
     }
 
+    private void sendLabelToServer(String labelName) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/labels");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+
+                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                conn.setDoOutput(true);
+                JSONObject payload = new JSONObject();
+                payload.put("name", labelName);
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.close();
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_CREATED || responseCode == 200) {
+                    Log.d("Label", "תווית נשמרה בשרת");
+                } else {
+                    Log.e("Label", "שגיאה בשמירת תווית לשרת: " + responseCode);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e("Label", "שגיאה ב-sendLabelToServer: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void deleteLabelFromServerById(String labelId) {
+        Log.d("Label", "מנסה למחוק מהשרת labelId: " + labelId);
+
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/labels/" + labelId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("DELETE");
+
+                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_NO_CONTENT) {
+                    Log.d("Label", "התווית נמחקה מהשרת בהצלחה");
+                } else {
+                    Log.e("Label", "שגיאה במחיקת תווית מהשרת: " + responseCode);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e("Label", "שגיאה ב-deleteLabelFromServerById: " + e.getMessage());
+            }
+        }).start();
+    }
 }

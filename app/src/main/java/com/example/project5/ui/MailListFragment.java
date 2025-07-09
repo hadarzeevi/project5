@@ -57,6 +57,9 @@ public class MailListFragment extends Fragment {
                         Intent intent = new Intent(getContext(), MailDetailActivity.class);
                         JSONObject json = mail.toJson();  // ודאי שקיימת פונקציה כזו במודל שלך
                         intent.putExtra("MAIL_JSON", json.toString());
+                        if (selectedLabel != null) {
+                            intent.putExtra("SELECTED_LABEL", selectedLabel);  // ← הוספה
+                        }
                         startActivity(intent);
                     } catch (Exception e) {
                         Toast.makeText(getContext(), "שגיאה בפתיחת המייל", Toast.LENGTH_SHORT).show();
@@ -230,8 +233,9 @@ public class MailListFragment extends Fragment {
     public void setLabel(String label) {
         this.selectedLabel = label;
         this.currentCategory = null;
-        filterAndDisplayMails();
+        loadMails(null);  // נטען את כל המיילים מהשרת, ללא סינון קטגוריה
     }
+
 
     public void setSearchQuery(String query) {
         this.searchQuery = query.toLowerCase();

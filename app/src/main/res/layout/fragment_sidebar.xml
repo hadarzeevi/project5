@@ -148,12 +148,6 @@
             android:background="@android:color/transparent"
             android:contentDescription="@string/add_label" />
 
-        <ImageButton
-            android:id="@+id/btnDeleteLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_remove"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/delete_label" />
+
     </LinearLayout>
 </LinearLayout>

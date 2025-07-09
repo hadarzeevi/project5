@@ -1,0 +1,10 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_add_label"
+        android:title="add to label" />
+
+    <item
+        android:id="@+id/action_remove_label"
+        android:title="remove from label" />
+
+</menu>
