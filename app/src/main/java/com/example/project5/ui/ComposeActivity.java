@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import com.example.project5.R;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -39,6 +40,7 @@ public class ComposeActivity extends Activity {
     private ImageButton btnSend, btnClear, btnClose, btnAttach, btnRemoveAttachment;
     private TextView tvSenderEmail, tvAttachmentName;
     private LinearLayout attachmentContainer;
+    private String draftId = null;
 
     private final OkHttpClient client = new OkHttpClient();
     private final String SPAM_CHECK_URL = "http://10.0.2.2:4000/api/blacklist/check";
@@ -69,8 +71,11 @@ public class ComposeActivity extends Activity {
         btnRemoveAttachment = findViewById(R.id.btnRemoveAttachment);
 
         // תמיכה במענה למייל
+
         Intent intent = getIntent();
         if (intent != null) {
+            draftId = intent.getStringExtra("draftId");
+
             String replyTo = intent.getStringExtra("replyTo");
             String replySubject = intent.getStringExtra("replySubject");
             String replyBody = intent.getStringExtra("replyBody");
@@ -106,7 +111,10 @@ public class ComposeActivity extends Activity {
         };
 
         btnClear.setOnClickListener(goHome);
-        btnClose.setOnClickListener(goHome);
+        btnClose.setOnClickListener(v -> {
+            saveAsDraft();  // קודם שומר טיוטה
+
+        });
     }
 
     @Override
@@ -193,6 +201,29 @@ public class ComposeActivity extends Activity {
                             public void onResponse(Call call, Response response) throws IOException {
                                 runOnUiThread(() -> {
                                     if (response.isSuccessful()) {
+                                        if (draftId != null && !draftId.isEmpty()) {
+                                            Request deleteRequest = new Request.Builder()
+                                                    .url("http://10.0.2.2:4000/api/mails/" + draftId)
+                                                    .delete()
+                                                    .addHeader("Authorization", "Bearer " + token)
+                                                    .build();
+
+                                            client.newCall(deleteRequest).enqueue(new Callback() {
+                                                @Override
+                                                public void onFailure(Call call, IOException e) {
+                                                    // לא קריטי אם זה נכשל, רק נרשום שגיאה
+                                                    e.printStackTrace();
+                                                }
+
+                                                @Override
+                                                public void onResponse(Call call, Response response) throws IOException {
+                                                    if (response.isSuccessful()) {
+                                                        // טיוטה נמחקה מהשרת
+                                                    }
+                                                }
+                                            });
+                                        }
+
                                         Toast.makeText(ComposeActivity.this, "המייל נשלח בהצלחה!", Toast.LENGTH_SHORT).show();
                                         Intent intent = new Intent(ComposeActivity.this, MailHomeActivity.class);
                                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -263,4 +294,77 @@ public class ComposeActivity extends Activity {
         }
         return byteBuffer.toByteArray();
     }
+
+    private void saveAsDraft() {
+        String to = etTo.getText().toString().trim();
+        String subject = etSubject.getText().toString().trim();
+        String body = etBody.getText().toString().trim();
+
+        // 🛑 אם הכל ריק – אין מה לשמור
+        if (to.isEmpty() && subject.isEmpty() && body.isEmpty()) {
+            finish();
+            return;
+        }
+
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        String token = prefs.getString("token", null);
+
+        JSONObject json = new JSONObject();
+        try {
+            json.put("sendTo", to);
+            json.put("subject", subject);
+            json.put("body", body);
+            json.put("category", "drafts");
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "שגיאה בשמירת טיוטה", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // בוחרים URL ו־method לפי האם זו טיוטה חדשה או קיימת
+        String url;
+        Request.Builder requestBuilder;
+
+        if (draftId != null && !draftId.isEmpty()) {
+            // טיוטה קיימת → נבצע PATCH
+            url = "http://10.0.2.2:4000/api/mails/" + draftId;
+            requestBuilder = new Request.Builder()
+                    .url(url)
+                    .patch(RequestBody.create(json.toString(), MediaType.get("application/json")));
+        } else {
+            // טיוטה חדשה → POST
+            url = "http://10.0.2.2:4000/api/mails";
+            requestBuilder = new Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create(json.toString(), MediaType.get("application/json")));
+        }
+
+        // הוספת טוקן
+        requestBuilder.addHeader("Authorization", "Bearer " + token);
+
+        // שליחה
+        client.newCall(requestBuilder.build()).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(ComposeActivity.this, "שגיאה בשמירת טיוטה", Toast.LENGTH_SHORT).show();
+                    finish();
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                runOnUiThread(() -> {
+                    if (response.isSuccessful()) {
+                        Toast.makeText(ComposeActivity.this, "הטיוטה נשמרה בהצלחה", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ComposeActivity.this, "השרת לא הצליח לשמור טיוטה", Toast.LENGTH_SHORT).show();
+                    }
+                    finish();
+                });
+            }
+        });
+    }
+
+
 }

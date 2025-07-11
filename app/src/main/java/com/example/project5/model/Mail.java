@@ -18,6 +18,7 @@ public class Mail {
     public boolean isStarred;
     public boolean isRead;
     public boolean hasAttachment;
+    public String sendTo;
 
     // נתוני השולח
     public String firstName;
@@ -45,6 +46,7 @@ public class Mail {
         mail.isRead = obj.optBoolean("isRead", false);
         mail.hasAttachment = obj.optBoolean("hasAttachment", false);
         mail.category = obj.optString("category", "");
+        mail.sendTo = obj.optString("sendTo", "");
 
         if (obj.has("label")) {
             JSONArray labelsArray = obj.getJSONArray("label");
@@ -93,6 +95,7 @@ public class Mail {
             obj.put("hasAttachment", hasAttachment);
             obj.put("category", category);
             obj.put("label", new JSONArray(label));
+            obj.put("sendTo", sendTo);
 
             JSONObject sender = new JSONObject();
             sender.put("first_name", firstName);
