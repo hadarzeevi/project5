@@ -2,9 +2,13 @@ package com.example.project5.ui;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +21,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -46,8 +51,16 @@ public class SidebarFragment extends Fragment {
     private OnCategorySelectedListener listener;
 
     private final List<String> userLabels = new ArrayList<>();
-    private final Map<String, String> labelIdMap = new HashMap<>();
+    private final Map<String, LabelInfo> labelInfoMap = new HashMap<>();
     private View selectedCategoryView = null;
+    private static class LabelInfo {
+        String id;
+        String color;
+        LabelInfo(String id, String color) {
+            this.id = id;
+            this.color = color;
+        }
+    }
 
     @Nullable
     @Override
@@ -121,85 +134,229 @@ public class SidebarFragment extends Fragment {
     private void loadLabels() {
         labelsContainer.removeAllViews();
 
-        for (String label : userLabels) {
-            addLabelToUI(label);
+        for (Map.Entry<String, LabelInfo> entry : labelInfoMap.entrySet()) {
+            String label = entry.getKey();
+            String color = entry.getValue().color;
+            addLabelToUI(label, color);
         }
     }
 
     private void promptAddLabel() {
-        EditText input = new EditText(getContext());
-        input.setHint("Enter label name");
+        Context context = getContext();
 
-        new android.app.AlertDialog.Builder(getContext())
-                .setTitle("new label")
-                .setView(input)
-                .setPositiveButton("add", (dialog, which) -> {
-                    String newLabel = input.getText().toString().trim();
-                    if (!newLabel.isEmpty() && !userLabels.contains(newLabel)) {
-                        userLabels.add(newLabel);
-                        saveLabelsToPrefs();
-                        addLabelToUI(newLabel);
-                        sendLabelToServer(newLabel);
-                    } else {
-                        Toast.makeText(getContext(), "תווית קיימת או ריקה", Toast.LENGTH_SHORT).show();
+        EditText labelInput = new EditText(context);
+        labelInput.setHint("Enter label name");
+
+        EditText colorInput = new EditText(context);
+        colorInput.setHint("Enter color (e.g. red, blue)");
+        colorInput.setInputType(InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(40, 20, 40, 10);
+        layout.addView(labelInput);
+        layout.addView(colorInput);
+
+        new AlertDialog.Builder(context)
+                .setTitle("New Label")
+                .setView(layout)
+                .setPositiveButton("Add", (dialog, which) -> {
+                    String labelName = labelInput.getText().toString().trim();
+                    String colorName = colorInput.getText().toString().trim().toLowerCase();
+
+                    if (labelName.isEmpty()) {
+                        Toast.makeText(context, "שם התווית לא יכול להיות ריק", Toast.LENGTH_SHORT).show();
+                        return;
                     }
+                    if (userLabels.contains(labelName)) {
+                        Toast.makeText(context, "תווית כבר קיימת", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    try {
+                        Color.parseColor(colorName); // validate
+                    } catch (IllegalArgumentException e) {
+                        Toast.makeText(context, "שם צבע לא תקף", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    userLabels.add(labelName);
+                    saveLabelsToPrefs();
+                    addLabelToUI(labelName, colorName); // ← נעביר גם את הצבע
+                    sendLabelToServer(labelName, colorName);
                 })
-                .setNegativeButton("cancel", null)
+                .setNegativeButton("Cancel", null)
                 .show();
-    }
+        }
+    private void addLabelToUI(String label, String colorName) {
+        Context context = getContext();
 
-    private void addLabelToUI(String label) {
-        LinearLayout labelItem = new LinearLayout(getContext());
+        LinearLayout labelItem = new LinearLayout(context);
         labelItem.setOrientation(LinearLayout.HORIZONTAL);
-        labelItem.setPadding(24, 24, 24, 24);
+        labelItem.setPadding(16, 16, 16, 16);
+        labelItem.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView tv = new TextView(getContext());
+        TextView tv = new TextView(context);
         tv.setText(label);
-        tv.setTextSize(16);
-        tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.grayDark));
+        tv.setTextSize(15);
+        tv.setTypeface(null, Typeface.NORMAL);
+        tv.setPadding(36, 20, 36, 20);
         tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        tv.setBackgroundResource(R.drawable.selector_category_background);
+        tv.setBackgroundResource(R.drawable.selector_category_background); // רקע ברירת מחדל
 
+        // יצירת רקע מעוגל עם צבע בהיר (רק בלחיצה)
+        GradientDrawable defaultBg = new GradientDrawable();
+        defaultBg.setCornerRadius(60); // פינות מעוגלות
+        try {
+            int baseColor = Color.parseColor(colorName);
+            int lightColor = lightenColor(baseColor, 0.5f);
+            defaultBg.setColor(Color.TRANSPARENT); // רקע שקוף כברירת מחדל
+            tv.setBackground(defaultBg);
+            tv.setTag(R.id.label_bg_color, lightColor); // נשתמש בזה בלחיצה
+            tv.setTextColor(Color.parseColor("#333333")); // אפור כהה כברירת מחדל
+        } catch (Exception e) {
+            defaultBg.setColor(Color.LTGRAY);
+            tv.setBackground(defaultBg);
+            tv.setTextColor(Color.DKGRAY);
+        }
+
+        // כפתור פח
+        ImageView deleteIcon = new ImageView(context);
+        deleteIcon.setImageResource(R.drawable.ic_delete);
+        deleteIcon.setPadding(20, 20, 20, 20);
+        deleteIcon.setVisibility(View.GONE);
+
+        // לחיצה על תווית
         tv.setOnClickListener(v -> {
-            if (selectedCategoryView != null) {
-                selectedCategoryView.setBackgroundResource(R.drawable.selector_category_background);
-                ((TextView) selectedCategoryView).setTypeface(null, Typeface.NORMAL);
-            }
-            v.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.selectedCategory));
-            ((TextView) v).setTypeface(null, Typeface.BOLD);
-            selectedCategoryView = v;
+            if (selectedCategoryView != null && selectedCategoryView instanceof TextView) {
+                TextView prev = (TextView) selectedCategoryView;
 
+                // איפוס רקע קודם
+                GradientDrawable bg = (GradientDrawable) prev.getBackground();
+                bg.setColor(Color.TRANSPARENT);
+                prev.setTypeface(null, Typeface.NORMAL);
+
+                // הסתרת פח קודם
+                View parent = (View) prev.getParent();
+                if (parent instanceof LinearLayout) {
+                    ImageView previousDeleteIcon = (ImageView) ((LinearLayout) parent).getChildAt(1);
+                    if (previousDeleteIcon != null) {
+                        previousDeleteIcon.setVisibility(View.GONE);
+                    }
+                }
+            }
+
+            // סימון נוכחי
+            if (tv.getTag(R.id.label_bg_color) instanceof Integer) {
+                int selectedColor = (int) tv.getTag(R.id.label_bg_color);
+                GradientDrawable bg = (GradientDrawable) tv.getBackground();
+                bg.setColor(selectedColor);
+            }
+
+            tv.setTypeface(null, Typeface.BOLD);
+            selectedCategoryView = tv;
+            deleteIcon.setVisibility(View.VISIBLE);
+
+            // שליחה ל־MailListFragment
             MailHomeActivity activity = (MailHomeActivity) requireActivity();
             MailListFragment listFragment = activity.getMailListFragment();
             if (listFragment != null) {
                 listFragment.setLabel(label);
             }
 
-            Toast.makeText(getContext(), "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
         });
 
-        ImageView deleteIcon = new ImageView(getContext());
-        deleteIcon.setImageResource(R.drawable.ic_delete);
-        deleteIcon.setPadding(16, 16, 16, 16);
+        // מחיקה
         deleteIcon.setOnClickListener(v -> {
             labelsContainer.removeView(labelItem);
             userLabels.remove(label);
             saveLabelsToPrefs();
-            Log.d("DEBUG", "מנסה למחוק תווית מהשרת: " + label);
-
-            String labelId = labelIdMap.get(label);
+            LabelInfo info = labelInfoMap.get(label);
+            String labelId = info != null ? info.id : null;
             if (labelId != null) {
                 deleteLabelFromServerById(labelId);
-            } else {
-                Log.e("DEBUG", "לא נמצא ID עבור התווית: " + label);
             }
-
-            Toast.makeText(getContext(), "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
         });
 
         labelItem.addView(tv);
         labelItem.addView(deleteIcon);
         labelsContainer.addView(labelItem);
+    }
+
+//    private void addLabelToUI(String label, String colorName) {
+//        Context context = getContext();
+//        LinearLayout labelItem = new LinearLayout(context);
+//        labelItem.setOrientation(LinearLayout.HORIZONTAL);
+//        labelItem.setPadding(24, 24, 24, 24);
+//
+//        ImageView deleteIcon = new ImageView(context);
+//        deleteIcon.setImageResource(R.drawable.ic_delete);
+//        deleteIcon.setPadding(16, 16, 16, 16);
+//        deleteIcon.setVisibility(View.GONE);
+//
+//        TextView tv = new TextView(context);
+//        tv.setText(label);
+//        tv.setTextSize(16);
+//        tv.setTextColor(ContextCompat.getColor(context, R.color.grayDark));
+//        tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+//        tv.setBackgroundColor(Color.TRANSPARENT);
+//
+//        tv.setOnClickListener(v -> {
+//            // איפוס תווית קודמת
+//            if (selectedCategoryView != null) {
+//                TextView prev = (TextView) selectedCategoryView;
+//                prev.setTypeface(null, Typeface.NORMAL);
+//                prev.setBackgroundColor(Color.TRANSPARENT);
+//
+//                View parent = (View) selectedCategoryView.getParent();
+//                if (parent instanceof LinearLayout) {
+//                    ImageView prevDeleteIcon = (ImageView) ((LinearLayout) parent).getChildAt(1);
+//                    if (prevDeleteIcon != null) prevDeleteIcon.setVisibility(View.GONE);
+//                }
+//            }
+//
+//            // סימון נוכחי
+//            int brightColor = lightenColor(Color.parseColor(colorName), 0.6f);
+//            tv.setBackgroundColor(brightColor);
+//            tv.setTypeface(null, Typeface.BOLD);
+//            selectedCategoryView = tv;
+//            deleteIcon.setVisibility(View.VISIBLE);
+//
+//            MailHomeActivity activity = (MailHomeActivity) requireActivity();
+//            MailListFragment listFragment = activity.getMailListFragment();
+//            if (listFragment != null) {
+//                listFragment.setLabel(label);
+//            }
+//
+//            Toast.makeText(context, "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
+//        });
+//
+//        deleteIcon.setOnClickListener(v -> {
+//            labelsContainer.removeView(labelItem);
+//            userLabels.remove(label);
+//            saveLabelsToPrefs();
+//
+//            LabelInfo info = labelInfoMap.get(label);
+//            String labelId = info != null ? info.id : null;
+//            if (labelId != null) {
+//                deleteLabelFromServerById(labelId);
+//            }
+//
+//            Toast.makeText(context, "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
+//        });
+//
+//        labelItem.addView(tv);
+//        labelItem.addView(deleteIcon);
+//        labelsContainer.addView(labelItem);
+//    }
+
+    private int lightenColor(int color, float factor) {
+        int r = Math.min(255, (int) ((Color.red(color) * (1 - factor) + 255 * factor)));
+        int g = Math.min(255, (int) ((Color.green(color) * (1 - factor) + 255 * factor)));
+        int b = Math.min(255, (int) ((Color.blue(color) * (1 - factor) + 255 * factor)));
+        return Color.rgb(r, g, b);
     }
 
     @Override
@@ -240,13 +397,15 @@ public class SidebarFragment extends Fragment {
 
                 JSONArray jsonArray = new JSONArray(sb.toString());
                 userLabels.clear();
-                labelIdMap.clear();
+                labelInfoMap.clear();
                 for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     String label = obj.getString("name");
                     String id = obj.getString("_id");
+                    String color = obj.optString("color", "#D3D3D3"); // אפור בהיר כברירת מחדל
                     userLabels.add(label);
-                    labelIdMap.put(label, id);
+                    labelInfoMap.put(label, new LabelInfo(id, color));
+
                 }
 
                 requireActivity().runOnUiThread(this::loadLabels);
@@ -257,7 +416,7 @@ public class SidebarFragment extends Fragment {
         }).start();
     }
 
-    private void sendLabelToServer(String labelName) {
+    private void sendLabelToServer(String labelName, String color) {
         new Thread(() -> {
             try {
                 URL url = new URL("http://10.0.2.2:4000/api/labels");
@@ -274,8 +433,9 @@ public class SidebarFragment extends Fragment {
                 conn.setDoOutput(true);
                 JSONObject payload = new JSONObject();
                 payload.put("name", labelName);
-
-                OutputStream os = conn.getOutputStream();
+                payload.put("color", color);
+                OutputStream os = conn.getOutputStream
+                        ();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
 
