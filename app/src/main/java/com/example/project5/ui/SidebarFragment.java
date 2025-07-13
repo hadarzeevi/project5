@@ -3,7 +3,9 @@ package com.example.project5.ui;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.InputType;
@@ -191,73 +193,73 @@ public class SidebarFragment extends Fragment {
     private void addLabelToUI(String label, String colorName) {
         Context context = getContext();
 
+        // מכולה של כל השורה (כולל טקסט + אייקון)
         LinearLayout labelItem = new LinearLayout(context);
         labelItem.setOrientation(LinearLayout.HORIZONTAL);
         labelItem.setPadding(16, 16, 16, 16);
         labelItem.setGravity(Gravity.CENTER_VERTICAL);
+        labelItem.setBackground(createRoundedBackground(Color.TRANSPARENT)); // ברירת מחדל – שקוף
 
+        // טקסט של התווית
         TextView tv = new TextView(context);
         tv.setText(label);
         tv.setTextSize(15);
         tv.setTypeface(null, Typeface.NORMAL);
         tv.setPadding(36, 20, 36, 20);
         tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-        tv.setBackgroundResource(R.drawable.selector_category_background); // רקע ברירת מחדל
 
-        // יצירת רקע מעוגל עם צבע בהיר (רק בלחיצה)
-        GradientDrawable defaultBg = new GradientDrawable();
-        defaultBg.setCornerRadius(60); // פינות מעוגלות
-        try {
-            int baseColor = Color.parseColor(colorName);
-            int lightColor = lightenColor(baseColor, 0.5f);
-            defaultBg.setColor(Color.TRANSPARENT); // רקע שקוף כברירת מחדל
-            tv.setBackground(defaultBg);
-            tv.setTag(R.id.label_bg_color, lightColor); // נשתמש בזה בלחיצה
-            tv.setTextColor(Color.parseColor("#333333")); // אפור כהה כברירת מחדל
-        } catch (Exception e) {
-            defaultBg.setColor(Color.LTGRAY);
-            tv.setBackground(defaultBg);
-            tv.setTextColor(Color.DKGRAY);
-        }
-
-        // כפתור פח
+        // פח
         ImageView deleteIcon = new ImageView(context);
-        deleteIcon.setImageResource(R.drawable.ic_delete);
+        deleteIcon.setImageResource(R.drawable.ic_delete); // ודאי שזה אייקון קטן עם רקע שקוף
         deleteIcon.setPadding(20, 20, 20, 20);
         deleteIcon.setVisibility(View.GONE);
 
-        // לחיצה על תווית
+        try {
+            int baseColor = Color.parseColor(colorName);
+            int lightColor = lightenColor(baseColor, 0.8f);
+
+            // שמירה בתור תגיות לשימוש מאוחר
+            labelItem.setTag(R.id.label_bg_color, lightColor);
+            labelItem.setTag(R.id.label_text_color, baseColor);
+
+        } catch (Exception e) {
+            labelItem.setBackground(createRoundedBackground(Color.LTGRAY));
+            tv.setTextColor(Color.DKGRAY);
+        }
+
+        // בעת לחיצה על תווית
         tv.setOnClickListener(v -> {
-            if (selectedCategoryView != null && selectedCategoryView instanceof TextView) {
-                TextView prev = (TextView) selectedCategoryView;
+            // אפס תווית קודמת
+            if (selectedCategoryView != null && selectedCategoryView instanceof LinearLayout) {
+                LinearLayout prevItem = (LinearLayout) selectedCategoryView;
+                prevItem.setBackground(createRoundedBackground(Color.TRANSPARENT));
 
-                // איפוס רקע קודם
-                GradientDrawable bg = (GradientDrawable) prev.getBackground();
-                bg.setColor(Color.TRANSPARENT);
-                prev.setTypeface(null, Typeface.NORMAL);
+                TextView prevTv = (TextView) prevItem.getChildAt(0);
+                prevTv.setTypeface(null, Typeface.NORMAL);
+                prevTv.setTextColor(Color.parseColor("#333333"));
 
-                // הסתרת פח קודם
-                View parent = (View) prev.getParent();
-                if (parent instanceof LinearLayout) {
-                    ImageView previousDeleteIcon = (ImageView) ((LinearLayout) parent).getChildAt(1);
-                    if (previousDeleteIcon != null) {
-                        previousDeleteIcon.setVisibility(View.GONE);
-                    }
-                }
+                ImageView prevTrash = (ImageView) prevItem.getChildAt(1);
+                prevTrash.setVisibility(View.GONE);
             }
 
-            // סימון נוכחי
-            if (tv.getTag(R.id.label_bg_color) instanceof Integer) {
-                int selectedColor = (int) tv.getTag(R.id.label_bg_color);
-                GradientDrawable bg = (GradientDrawable) tv.getBackground();
-                bg.setColor(selectedColor);
+            // עדכן עיצוב חדש
+            Integer bgColor = (Integer) labelItem.getTag(R.id.label_bg_color);
+            if (bgColor != null) {
+                labelItem.setBackground(createRoundedBackground(bgColor));
+            }
+
+            Integer textColor = (Integer) labelItem.getTag(R.id.label_text_color);
+            if (textColor != null) {
+                tv.setTextColor(textColor);
+                deleteIcon.setColorFilter(textColor, PorterDuff.Mode.SRC_IN); // ← זה משנה את צבע הפח
+
             }
 
             tv.setTypeface(null, Typeface.BOLD);
-            selectedCategoryView = tv;
             deleteIcon.setVisibility(View.VISIBLE);
+            selectedCategoryView = labelItem;
 
-            // שליחה ל־MailListFragment
+            // שליחה לרשימת מיילים
             MailHomeActivity activity = (MailHomeActivity) requireActivity();
             MailListFragment listFragment = activity.getMailListFragment();
             if (listFragment != null) {
@@ -267,22 +269,30 @@ public class SidebarFragment extends Fragment {
             Toast.makeText(context, "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
         });
 
-        // מחיקה
+        // כשלוחצים על פח
         deleteIcon.setOnClickListener(v -> {
             labelsContainer.removeView(labelItem);
             userLabels.remove(label);
             saveLabelsToPrefs();
+
             LabelInfo info = labelInfoMap.get(label);
             String labelId = info != null ? info.id : null;
             if (labelId != null) {
                 deleteLabelFromServerById(labelId);
             }
+
             Toast.makeText(context, "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
         });
 
         labelItem.addView(tv);
         labelItem.addView(deleteIcon);
         labelsContainer.addView(labelItem);
+    }
+    private Drawable createRoundedBackground(int color) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(0); // בלי עיגול בכלל
+        bg.setColor(color);
+        return bg;
     }
 
 //    private void addLabelToUI(String label, String colorName) {
@@ -353,11 +363,12 @@ public class SidebarFragment extends Fragment {
 //    }
 
     private int lightenColor(int color, float factor) {
-        int r = Math.min(255, (int) ((Color.red(color) * (1 - factor) + 255 * factor)));
-        int g = Math.min(255, (int) ((Color.green(color) * (1 - factor) + 255 * factor)));
-        int b = Math.min(255, (int) ((Color.blue(color) * (1 - factor) + 255 * factor)));
+        int r = Math.min(255, (int) (Color.red(color) + (255 - Color.red(color)) * factor));
+        int g = Math.min(255, (int) (Color.green(color) + (255 - Color.green(color)) * factor));
+        int b = Math.min(255, (int) (Color.blue(color) + (255 - Color.blue(color)) * factor));
         return Color.rgb(r, g, b);
     }
+
 
     @Override
     public void onAttach(@NonNull Context context) {
