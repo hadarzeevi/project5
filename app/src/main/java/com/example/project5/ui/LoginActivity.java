@@ -179,6 +179,7 @@ public class LoginActivity extends AppCompatActivity {
                                 .putString("token", token)
                                 .putString("userId", userId)
                                 .putString("profileImage", profileImage)
+                                .putString("email", userEmail)
                                 .apply();
 
                         startActivity(new Intent(LoginActivity.this, MailHomeActivity.class));

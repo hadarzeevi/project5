@@ -22,6 +22,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
@@ -72,9 +73,23 @@ public class MailDetailActivity extends AppCompatActivity {
         ivBack.setOnClickListener(v -> finish());
 
         ivTrash.setOnClickListener(v -> {
-            Toast.makeText(this, "הועבר לאשפה", Toast.LENGTH_SHORT).show();
-            finish();
+            if ("trash".equalsIgnoreCase(mail.category)) {
+                // אם כבר באשפה – מחיקה סופית
+                showDeleteForeverDialog(mail.id);
+            } else {
+                // אחרת – העברה לאשפה
+                moveToTrash(mail.id);
+
+                // סגירת המסך וחזרה עם תוצאה (אופציונלי)
+                Intent resultIntent = new Intent();
+                resultIntent.putExtra("deletedMailId", mail.id);
+                setResult(RESULT_OK, resultIntent);
+                finish();
+            }
         });
+
+
+
 
         ivStar.setOnClickListener(v -> {
             mail.isStarred = !mail.isStarred;
@@ -103,6 +118,95 @@ public class MailDetailActivity extends AppCompatActivity {
                     (mail.body != null ? mail.body : ""));
             startActivity(intent);
         });
+    }
+    private void showDeleteForeverDialog(String mailId) {
+        new AlertDialog.Builder(this)
+                .setTitle("מחיקה סופית")
+                .setMessage("האם אתה בטוח שברצונך למחוק את המייל לצמיתות?")
+                .setPositiveButton("מחק", (dialog, which) -> deleteMailPermanently(mailId))
+                .setNegativeButton("בטל", null)
+                .show();
+    }
+    private void deleteMailPermanently(String mailId) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("DELETE");
+
+                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                int responseCode = conn.getResponseCode();
+
+                InputStream stream = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
+                StringBuilder msg = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    msg.append(line);
+                }
+                reader.close();
+
+                runOnUiThread(() -> {
+                    if (responseCode >= 200 && responseCode < 300) {
+                        Toast.makeText(this, "המייל נמחק לצמיתות", Toast.LENGTH_SHORT).show();
+                        finish();
+                    } else {
+                        Toast.makeText(this, "שגיאה במחיקה: " + responseCode, Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() ->
+                        Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void moveToTrash(String mailId) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("PATCH");
+                conn.setRequestProperty("Content-Type", "application/json");
+
+                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                conn.setDoOutput(true);
+
+                JSONObject payload = new JSONObject();
+                payload.put("category", "trash");
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.close();
+
+                int responseCode = conn.getResponseCode();
+
+                runOnUiThread(() -> {
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        Toast.makeText(this, "הועבר לאשפה", Toast.LENGTH_SHORT).show();
+                        finish(); // חזור למסך הקודם
+                    } else {
+                        Toast.makeText(this, "שגיאה בהעברה לאשפה", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                runOnUiThread(() -> Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
     }
 
     private void loadMailData() {
