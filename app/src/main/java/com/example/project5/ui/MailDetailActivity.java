@@ -4,28 +4,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MenuInflater;
 import android.view.View;
 import android.widget.*;
-
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 
 import com.bumptech.glide.Glide;
 import com.example.project5.R;
 import com.example.project5.model.Mail;
-import com.google.firebase.crashlytics.buildtools.reloc.com.google.common.reflect.TypeToken;
-import com.google.gson.Gson;
+import com.example.project5.utils.SpamUtils;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
@@ -37,14 +28,14 @@ public class MailDetailActivity extends AppCompatActivity {
     private ImageView ivStar, ivAvatar, ivBack, ivTrash, ivMore;
     private LinearLayout btnReply, btnForward;
     private Mail mail;
-    private String selectedLabel = null;
-    private final Map<String, String> labelIdMap = new HashMap<>();
+    private boolean isSpamCategory = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mail_detail);
 
+        // רכיבי ממשק
         tvSubject = findViewById(R.id.tvSubject);
         tvSenderName = findViewById(R.id.tvSenderName);
         tvSenderEmail = findViewById(R.id.tvSenderEmail);
@@ -60,158 +51,59 @@ public class MailDetailActivity extends AppCompatActivity {
 
         try {
             String mailJson = getIntent().getStringExtra("MAIL_JSON");
-            selectedLabel = getIntent().getStringExtra("SELECTED_LABEL");
             JSONObject json = new JSONObject(mailJson);
             mail = Mail.fromJson(json);
+            isSpamCategory = "spam".equalsIgnoreCase(mail.category);
             loadMailData();
         } catch (Exception e) {
             Toast.makeText(this, "שגיאה בטעינת מייל", Toast.LENGTH_SHORT).show();
             finish();
         }
 
-        ivMore.setOnClickListener(this::showPopupMenu);
+        setupClickListeners();
+    }
+
+    private void setupClickListeners() {
         ivBack.setOnClickListener(v -> finish());
 
         ivTrash.setOnClickListener(v -> {
-            if ("trash".equalsIgnoreCase(mail.category)) {
-                // אם כבר באשפה – מחיקה סופית
-                showDeleteForeverDialog(mail.id);
+            if (isSpamCategory) {
+                // אם המייל בספאם, מחיקה לצמיתות
+                deletePermanently(mail.id);
             } else {
-                // אחרת – העברה לאשפה
+                // אחרת, העברה לאשפה
                 moveToTrash(mail.id);
-
-                // סגירת המסך וחזרה עם תוצאה (אופציונלי)
-                Intent resultIntent = new Intent();
-                resultIntent.putExtra("deletedMailId", mail.id);
-                setResult(RESULT_OK, resultIntent);
-                finish();
             }
         });
 
-
-
-
         ivStar.setOnClickListener(v -> {
             mail.isStarred = !mail.isStarred;
-            ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
+            updateStarIcon();
+            updateStarOnServer(mail.id, mail.isStarred);
             Toast.makeText(this, mail.isStarred ? "סומן בכוכב" : "הוסר מכוכבים", Toast.LENGTH_SHORT).show();
         });
 
         btnReply.setOnClickListener(v -> {
-            Intent intent = new Intent(MailDetailActivity.this, ComposeActivity.class);
+            Intent intent = new Intent(this, ComposeActivity.class);
             intent.putExtra("replyTo", mail.fromMail);
-            intent.putExtra("replySubject", "Re: " + (mail.subject != null ? mail.subject : ""));
-            intent.putExtra("replyBody", "\n\n---------- original text ----------\n" +
-                    "from: " + mail.firstName + " " + mail.lastName + " <" + mail.fromMail + ">\n" +
-                    "date: " + formatDate(mail.date) + "\n\n" +
-                    (mail.body != null ? mail.body : ""));
+            intent.putExtra("replySubject", "Re: " + mail.subject);
+            intent.putExtra("replyBody", "\n\n--- הודעה מקורית ---\n" + mail.body);
             startActivity(intent);
         });
 
         btnForward.setOnClickListener(v -> {
-            Intent intent = new Intent(MailDetailActivity.this, ComposeActivity.class);
-            intent.putExtra("replyTo", "");
-            intent.putExtra("replySubject", "Fwd: " + (mail.subject != null ? mail.subject : ""));
-            intent.putExtra("replyBody", "\n\n---------- message forward ----------\n" +
-                    "from: " + mail.firstName + " " + mail.lastName + " <" + mail.fromMail + ">\n" +
-                    "date: " + formatDate(mail.date) + "\n\n" +
-                    (mail.body != null ? mail.body : ""));
+            Intent intent = new Intent(this, ComposeActivity.class);
+            intent.putExtra("replySubject", "Fwd: " + mail.subject);
+            intent.putExtra("replyBody", "\n\n--- העברת הודעה ---\n" + mail.body);
             startActivity(intent);
         });
-    }
-    private void showDeleteForeverDialog(String mailId) {
-        new AlertDialog.Builder(this)
-                .setTitle("מחיקה סופית")
-                .setMessage("האם אתה בטוח שברצונך למחוק את המייל לצמיתות?")
-                .setPositiveButton("מחק", (dialog, which) -> deleteMailPermanently(mailId))
-                .setNegativeButton("בטל", null)
-                .show();
-    }
-    private void deleteMailPermanently(String mailId) {
-        new Thread(() -> {
-            try {
-                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("DELETE");
 
-                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-                String token = prefs.getString("token", null);
-                if (token != null) {
-                    conn.setRequestProperty("Authorization", "Bearer " + token);
-                }
-
-                int responseCode = conn.getResponseCode();
-
-                InputStream stream = (responseCode >= 200 && responseCode < 300) ? conn.getInputStream() : conn.getErrorStream();
-                BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
-                StringBuilder msg = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    msg.append(line);
-                }
-                reader.close();
-
-                runOnUiThread(() -> {
-                    if (responseCode >= 200 && responseCode < 300) {
-                        Toast.makeText(this, "המייל נמחק לצמיתות", Toast.LENGTH_SHORT).show();
-                        finish();
-                    } else {
-                        Toast.makeText(this, "שגיאה במחיקה: " + responseCode, Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() ->
-                        Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            }
-        }).start();
-    }
-
-    private void moveToTrash(String mailId) {
-        new Thread(() -> {
-            try {
-                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("PATCH");
-                conn.setRequestProperty("Content-Type", "application/json");
-
-                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-                String token = prefs.getString("token", null);
-                if (token != null) {
-                    conn.setRequestProperty("Authorization", "Bearer " + token);
-                }
-
-                conn.setDoOutput(true);
-
-                JSONObject payload = new JSONObject();
-                payload.put("category", "trash");
-
-                OutputStream os = conn.getOutputStream();
-                os.write(payload.toString().getBytes("UTF-8"));
-                os.close();
-
-                int responseCode = conn.getResponseCode();
-
-                runOnUiThread(() -> {
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        Toast.makeText(this, "הועבר לאשפה", Toast.LENGTH_SHORT).show();
-                        finish(); // חזור למסך הקודם
-                    } else {
-                        Toast.makeText(this, "שגיאה בהעברה לאשפה", Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            }
-        }).start();
+        ivMore.setOnClickListener(this::showPopupMenu);
     }
 
     private void loadMailData() {
         tvSubject.setText(mail.subject != null ? mail.subject : "(ללא נושא)");
-        tvBody.setText(mail.body != null ? mail.body : "(ללא תוכן)");
+        tvBody.setText(mail.body != null ? mail.body : "(אין תוכן)");
         tvSenderEmail.setText(mail.fromMail != null ? mail.fromMail : "(שולח לא ידוע)");
         tvDate.setText(formatDate(mail.date));
 
@@ -225,6 +117,10 @@ public class MailDetailActivity extends AppCompatActivity {
             Glide.with(this).load(url).placeholder(R.drawable.ic_avatar).into(ivAvatar);
         }
 
+        updateStarIcon();
+    }
+
+    private void updateStarIcon() {
         ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
     }
 
@@ -242,150 +138,179 @@ public class MailDetailActivity extends AppCompatActivity {
     private void showPopupMenu(View anchorView) {
         PopupMenu popup = new PopupMenu(this, anchorView);
         popup.getMenuInflater().inflate(R.menu.menu_mail_option, popup.getMenu());
+
+        if ("inbox".equalsIgnoreCase(mail.category)) {
+            popup.getMenu().findItem(R.id.action_mark_as_spam).setVisible(true);
+        } else {
+            popup.getMenu().findItem(R.id.action_mark_as_spam).setVisible(false);
+        }
+
+        if ("spam".equalsIgnoreCase(mail.category)) {
+            popup.getMenu().add("סמן כלא ספאם")
+                    .setOnMenuItemClickListener(item -> {
+                        removeMailFromSpam();
+                        return true;
+                    });
+        }
+
+
         popup.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_add_label) {
-                fetchLabelsFromServerAndShowDialog();
+                Toast.makeText(this, "תמיכה עתידית: הוסף תווית", Toast.LENGTH_SHORT).show();
                 return true;
             } else if (item.getItemId() == R.id.action_remove_label) {
-                showRemoveLabelDialog(mail);
+                Toast.makeText(this, "תמיכה עתידית: הסר תווית", Toast.LENGTH_SHORT).show();
+                return true;
+            } else if (item.getItemId() == R.id.action_mark_as_spam) {
+                markMailAsSpam();
+                return true;
+            } else if (item.getItemId() == R.id.action_not_spam) {
+                removeMailFromSpam();
                 return true;
             }
             return false;
         });
+
         popup.show();
     }
 
-    private void showRemoveLabelDialog(Mail mail) {
-        if (mail.label == null || mail.label.isEmpty()) {
-            Toast.makeText(this, "אין תוויות להסיר", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        String[] labelArray = mail.label.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("בחר תווית להסרה")
-                .setItems(labelArray, (dialog, which) -> removeLabelFromMail(mail, labelArray[which]))
-                .show();
+    private void moveToTrash(String mailId) {
+        updateMailCategory(mailId, "trash", "הועבר לאשפה");
     }
 
-    private void fetchLabelsFromServerAndShowDialog() {
-        Log.d("Labels", "fetchLabelsFromServerAndShowDialog התחיל");
+    private void deletePermanently(String mailId) {
         new Thread(() -> {
-            List<String> labelsToShow = new ArrayList<>();
             try {
-                URL url = new URL("http://10.0.2.2:4000/api/labels");
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
+                conn.setRequestMethod("DELETE");
+
                 SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
                 String token = prefs.getString("token", null);
-                if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
-                int responseCode = conn.getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) sb.append(line);
-                    reader.close();
-                    JSONArray jsonArray = new JSONArray(sb.toString());
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject obj = jsonArray.getJSONObject(i);
-                        String labelId = obj.getString("_id");
-                        String labelName = obj.getString("name");
-                        labelIdMap.put(labelName, labelId);
-                        if (mail.label == null || !mail.label.contains(labelName)) {
-                            labelsToShow.add(labelName);
-                        }
-                    }
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
                 }
-                runOnUiThread(() -> showLabelSelectionDialog(mail, labelsToShow));
+
+                int responseCode = conn.getResponseCode();
+
+                runOnUiThread(() -> {
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        Toast.makeText(this, "המייל נמחק לצמיתות", Toast.LENGTH_SHORT).show();
+                        finish();
+                    } else {
+                        Toast.makeText(this, "שגיאה במחיקת המייל", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
             } catch (Exception e) {
-                Log.e("Labels", "שגיאה בטעינת תוויות", e);
-                runOnUiThread(() -> Toast.makeText(this, "שגיאה בטעינת תוויות", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
 
-    private void showLabelSelectionDialog(Mail mail, List<String> labelList) {
-        if (labelList == null || labelList.isEmpty()) {
-            Toast.makeText(this, "אין תוויות זמינות", Toast.LENGTH_SHORT).show();
-            return;
+    private void markMailAsSpam() {
+        // שימוש בפונקציה המשופרת מ-SpamUtils
+        SpamUtils.markMailAsSpam(this, mail.id, mail.fromMail, mail.subject, mail.body);
+
+        // הצגת הודעה למשתמש
+        Toast.makeText(this, "המייל הועבר לספאם וקישורים נוספו לרשימה השחורה", Toast.LENGTH_LONG).show();
+
+        // הדפסת הקישורים שנמצאו (לבדיקה)
+        List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
+        if (!links.isEmpty()) {
+            Log.d("MailDetailActivity", "Found links: " + links);
+            Toast.makeText(this, "נמצאו " + links.size() + " קישורים ונוספו לרשימה השחורה", Toast.LENGTH_SHORT).show();
         }
-        String[] labels = labelList.toArray(new String[0]);
-        new AlertDialog.Builder(this)
-                .setTitle("בחר תווית")
-                .setItems(labels, (dialog, which) -> addLabelToMail(mail, labels[which]))
-                .show();
+
+        finish();
     }
 
-    private void addLabelToMail(Mail mail, String label) {
+    private void removeMailFromSpam() {
+        // שימוש בפונקציה המשופרת מ-SpamUtils
+        SpamUtils.removeMailFromSpam(this, mail.id, mail.fromMail, mail.subject, mail.body, "inbox");
+
+        // הצגת הודעה למשתמש
+        Toast.makeText(this, "המייל הוסר מספאם וקישורים הוסרו מהרשימה השחורה", Toast.LENGTH_LONG).show();
+
+        // הדפסת הקישורים שהוסרו (לבדיקה)
+        List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
+        if (!links.isEmpty()) {
+            Log.d("MailDetailActivity", "Removed links: " + links);
+            Toast.makeText(this, "הוסרו " + links.size() + " קישורים מהרשימה השחורה", Toast.LENGTH_SHORT).show();
+        }
+
+        finish();
+    }
+
+    private void updateMailCategory(String mailId, String category, String successMessage) {
         new Thread(() -> {
             try {
-                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mail.id);
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("PATCH");
                 conn.setRequestProperty("Content-Type", "application/json");
+
                 SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
                 String token = prefs.getString("token", null);
-                if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
                 conn.setDoOutput(true);
-                if (mail.label == null) mail.label = new ArrayList<>();
-                if (!mail.label.contains(label)) mail.label.add(label);
                 JSONObject payload = new JSONObject();
-                payload.put("label", new JSONArray(mail.label));
+                payload.put("category", category);
+
                 OutputStream os = conn.getOutputStream();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
+
                 int responseCode = conn.getResponseCode();
+
                 runOnUiThread(() -> {
                     if (responseCode == HttpURLConnection.HTTP_OK) {
-                        Toast.makeText(this, "המייל נוסף לתווית: " + label, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, successMessage, Toast.LENGTH_SHORT).show();
+                        finish();
                     } else {
-                        Toast.makeText(this, "שגיאה בעת עדכון התווית", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "שגיאה בעדכון הקטגוריה", Toast.LENGTH_SHORT).show();
                     }
                 });
+
             } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "שגיאה: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
     }
 
-    private void removeLabelFromMail(Mail mail, String labelToRemove) {
+    private void updateStarOnServer(String mailId, boolean isStarred) {
         new Thread(() -> {
             try {
-                if (mail.label == null) return;
-                mail.label.remove(labelToRemove);
-                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mail.id);
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("PATCH");
                 conn.setRequestProperty("Content-Type", "application/json");
+
                 SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
                 String token = prefs.getString("token", null);
-                if (token != null) conn.setRequestProperty("Authorization", "Bearer " + token);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
                 conn.setDoOutput(true);
                 JSONObject payload = new JSONObject();
-                payload.put("label", new JSONArray(mail.label));
+                payload.put("isStarred", isStarred);
+
                 OutputStream os = conn.getOutputStream();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
+
                 int responseCode = conn.getResponseCode();
-                runOnUiThread(() -> {
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        Toast.makeText(this, "התווית הוסרה", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(this, "שגיאה בהסרת התווית", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    Log.e("MailDetailActivity", "Failed to update star status");
+                }
+
             } catch (Exception e) {
-                e.printStackTrace();
-                runOnUiThread(() -> Toast.makeText(this, "שגיאה: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                Log.e("MailDetailActivity", "Error updating star status: " + e.getMessage());
             }
         }).start();
-    }
-
-    private List<String> loadLabelsFromPrefs() {
-        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
-        String json = prefs.getString("userLabels", "[]");
-        Type type = new TypeToken<List<String>>(){}.getType();
-        return new Gson().fromJson(json, type);
     }
 }

@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.project5.R;
 import com.example.project5.model.Mail;
+import com.example.project5.utils.SpamUtils;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -32,6 +33,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 public class MailListFragment extends Fragment {
     private String searchQuery = "";
@@ -43,15 +45,13 @@ public class MailListFragment extends Fragment {
     private final ArrayList<Mail> allMails = new ArrayList<>();
     private final ArrayList<Mail> mailList = new ArrayList<>();
     private final String API_URL = "http://10.0.2.2:4000/api/mails";
+    private final String CHECK_SPAM_URL = "http://10.0.2.2:4000/api/blacklist/check";
     private String currentCategory = "inbox";
     private String selectedLabel = null;
     private ActivityResultLauncher<Intent> mailDetailLauncher;
 
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             ViewGroup container,
-                             Bundle savedInstanceState) {
-
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_mail_list, container, false);
         tvCategoryTitle = view.findViewById(R.id.tvCategoryTitle);
 
@@ -70,7 +70,6 @@ public class MailListFragment extends Fragment {
                             intent.putExtra("replySubject", mail.subject);
                             intent.putExtra("replyBody", mail.body);
                             intent.putExtra("draftId", mail.id);
-
                             startActivity(intent);
                         } else {
                             Intent intent = new Intent(getContext(), MailDetailActivity.class);
@@ -92,6 +91,7 @@ public class MailListFragment extends Fragment {
         );
 
         recyclerView.setAdapter(adapter);
+
         loadMails(currentCategory);
 
         mailDetailLauncher = registerForActivityResult(
@@ -99,9 +99,20 @@ public class MailListFragment extends Fragment {
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK) {
                         Intent data = result.getData();
-                        if (data != null && data.hasExtra("deletedMailId")) {
-                            String deletedId = data.getStringExtra("deletedMailId");
-                            removeMailFromList(deletedId);
+                        if (data != null) {
+                            if (data.hasExtra("deletedMailId")) {
+                                String deletedId = data.getStringExtra("deletedMailId");
+                                removeMailFromList(deletedId);
+                            }
+                            // טיפול במייל שהועבר מספאם או אליו
+                            if (data.hasExtra("mailMovedFromSpam")) {
+                                String movedMailId = data.getStringExtra("mailMovedFromSpam");
+                                handleMailMovedFromSpam(movedMailId);
+                            }
+                            if (data.hasExtra("mailMovedToSpam")) {
+                                String movedMailId = data.getStringExtra("mailMovedToSpam");
+                                handleMailMovedToSpam(movedMailId);
+                            }
                         }
                     }
                 }
@@ -118,7 +129,6 @@ public class MailListFragment extends Fragment {
                 String urlStr = API_URL;
                 if (category != null && !category.isEmpty()) {
                     urlStr += "?category=" + category.toLowerCase();
-                    Log.d("MailListFragment", "Full API URL: " + urlStr);
                 }
 
                 URL url = new URL(urlStr);
@@ -127,7 +137,6 @@ public class MailListFragment extends Fragment {
 
                 SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
                 String token = prefs.getString("token", null);
-
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer " + token);
                 }
@@ -148,7 +157,22 @@ public class MailListFragment extends Fragment {
                 for (int i = 0; i < jsonArray.length(); i++) {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     Mail mail = Mail.fromJson(obj);
+
+                    // בדיקת ספאם - גם בדיקה רגילה וגם בדיקת קישורים
+                    boolean isSpam = checkIfSpam(mail.subject, mail.body) ||
+                            SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body);
+
+                    if ("inbox".equalsIgnoreCase(mail.category) && isSpam) {
+                        mail.category = "spam";
+                        // אם המייל נכנס לספאם בגלל קישורים, נוסיף את הקישורים לblacklist
+                        if (SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body)) {
+                            List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
+                            SpamUtils.addLinksToBlacklist(getContext(), links);
+                        }
+                    }
+
                     allMails.add(mail);
+
                     if (mail.from != null && !mail.from.isEmpty()) {
                         fetchSenderDetails(mail.from, mail);
                     }
@@ -169,6 +193,83 @@ public class MailListFragment extends Fragment {
                 });
             }
         }).start();
+    }
+
+    private boolean checkIfSpam(String subject, String body) {
+        try {
+            URL url = new URL(CHECK_SPAM_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+
+            SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+            String token = prefs.getString("token", null);
+            if (token != null) {
+                conn.setRequestProperty("Authorization", "Bearer " + token);
+            }
+
+            conn.setDoOutput(true);
+            JSONObject bodyJson = new JSONObject();
+            bodyJson.put("subject", subject);
+            bodyJson.put("body", body);
+
+            conn.getOutputStream().write(bodyJson.toString().getBytes("UTF-8"));
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder json = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                json.append(line);
+            }
+            reader.close();
+
+            JSONObject response = new JSONObject(json.toString());
+            return response.optBoolean("spam", false);
+
+        } catch (Exception e) {
+            Log.e("checkIfSpam", "Error checking spam: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * טיפול במייל שהועבר מספאם - הסרת הקישורים מהblacklist
+     */
+    private void handleMailMovedFromSpam(String mailId) {
+        Mail mail = findMailById(mailId);
+        if (mail != null) {
+            List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
+            if (!links.isEmpty()) {
+                SpamUtils.removeLinksFromBlacklist(getContext(), links);
+                Log.d("MailListFragment", "Removed " + links.size() + " links from blacklist for mail: " + mailId);
+            }
+        }
+    }
+
+    /**
+     * טיפול במייל שהועבר לספאם - הוספת הקישורים לblacklist
+     */
+    private void handleMailMovedToSpam(String mailId) {
+        Mail mail = findMailById(mailId);
+        if (mail != null) {
+            List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
+            if (!links.isEmpty()) {
+                SpamUtils.addLinksToBlacklist(getContext(), links);
+                Log.d("MailListFragment", "Added " + links.size() + " links to blacklist for mail: " + mailId);
+            }
+        }
+    }
+
+    /**
+     * מציאת מייל לפי ID
+     */
+    private Mail findMailById(String mailId) {
+        for (Mail mail : allMails) {
+            if (mail.id.equals(mailId)) {
+                return mail;
+            }
+        }
+        return null;
     }
 
     private void filterAndDisplayMails() {
@@ -212,7 +313,6 @@ public class MailListFragment extends Fragment {
     }
 
     private void fetchSenderDetails(String userId, Mail mail) {
-        Log.d("FetchSenderDetails", "Fetching for userId: " + userId);
         new Thread(() -> {
             try {
                 URL url = new URL("http://10.0.2.2:4000/api/users/" + userId);
@@ -221,7 +321,6 @@ public class MailListFragment extends Fragment {
 
                 SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
                 String token = prefs.getString("token", null);
-
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer " + token);
                 }
@@ -235,12 +334,10 @@ public class MailListFragment extends Fragment {
                 reader.close();
 
                 JSONObject userObj = new JSONObject(json.toString());
-
                 mail.username = userObj.optString("username", "");
                 mail.firstName = userObj.optString("first_name", "");
                 mail.lastName = userObj.optString("last_name", "");
                 mail.profileImage = userObj.optString("profileImage", "");
-                Log.d("FetchSenderDetails", "username: " + mail.username);
 
                 requireActivity().runOnUiThread(() -> adapter.notifyDataSetChanged());
 

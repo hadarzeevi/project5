@@ -78,6 +78,7 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
             Glide.with(holder.itemView.getContext())
                     .load(url)
                     .placeholder(R.drawable.ic_avatar)
+                    .circleCrop()
                     .into(holder.ivAvatar);
         } else {
             holder.ivAvatar.setImageResource(R.drawable.ic_avatar);

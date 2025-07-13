@@ -15,6 +15,8 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.example.project5.utils.SpamUtils;
+
 
 import com.example.project5.R;
 
@@ -143,107 +145,78 @@ public class ComposeActivity extends Activity {
             return;
         }
 
-        try {
-            JSONObject checkPayload = new JSONObject();
-            checkPayload.put("subject", subject);
-            checkPayload.put("body", body);
+        // בדיקה האם כתובת הנמען ברשימת blacklist
+        boolean isSpam = SpamUtils.isEmailBlacklisted(this, to);
 
-            RequestBody checkBody = RequestBody.create(checkPayload.toString(), MediaType.get("application/json"));
-            Request checkRequest = new Request.Builder()
-                    .url(SPAM_CHECK_URL)
-                    .post(checkBody)
-                    .addHeader("Authorization", "Bearer " + token)
-                    .build();
+        // בניית הבקשה
+        MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("sendTo", to)
+                .addFormDataPart("subject", subject)
+                .addFormDataPart("body", body)
+                .addFormDataPart("isSpam", String.valueOf(isSpam));
 
-            client.newCall(checkRequest).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    runOnUiThread(() -> Toast.makeText(ComposeActivity.this, "שגיאה בבדיקת ספאם", Toast.LENGTH_SHORT).show());
-                }
+        // צרוף קובץ אם יש
+        if (selectedFileUri != null) {
+            String fileName = getFileName(selectedFileUri);
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(selectedFileUri);
+                byte[] fileBytes = getBytes(inputStream);
 
-                @Override
-                public void onResponse(Call call, Response response) throws IOException {
-                    try {
-                        JSONObject result = new JSONObject(response.body().string());
-                        boolean isSpam = result.optBoolean("spam", false);
+                RequestBody fileBody = RequestBody.create(fileBytes,
+                        MediaType.parse(getContentResolver().getType(selectedFileUri)));
 
-                        MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM)
-                                .addFormDataPart("sendTo", to)
-                                .addFormDataPart("subject", subject)
-                                .addFormDataPart("body", body)
-                                .addFormDataPart("isSpam", String.valueOf(isSpam));
+                builder.addFormDataPart("attachments", fileName, fileBody);
+            } catch (IOException e) {
+                Toast.makeText(this, "שגיאה בקריאת הקובץ", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
 
-                        if (selectedFileUri != null) {
-                            String fileName = getFileName(selectedFileUri);
-                            InputStream inputStream = getContentResolver().openInputStream(selectedFileUri);
-                            byte[] fileBytes = getBytes(inputStream);
+        RequestBody requestBody = builder.build();
 
-                            RequestBody fileBody = RequestBody.create(fileBytes,
-                                    MediaType.parse(getContentResolver().getType(selectedFileUri)));
-                            builder.addFormDataPart("attachments", fileName, fileBody);
+        Request mailRequest = new Request.Builder()
+                .url(MAIL_SEND_URL)
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer " + token)
+                .build();
+
+        client.newCall(mailRequest).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                runOnUiThread(() -> Toast.makeText(ComposeActivity.this, "שגיאה בשליחת מייל", Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                runOnUiThread(() -> {
+                    if (response.isSuccessful()) {
+                        // אם זו טיוטה – מוחקים אותה מהשרת
+                        if (draftId != null && !draftId.isEmpty()) {
+                            Request deleteRequest = new Request.Builder()
+                                    .url("http://10.0.2.2:4000/api/mails/" + draftId)
+                                    .delete()
+                                    .addHeader("Authorization", "Bearer " + token)
+                                    .build();
+
+                            client.newCall(deleteRequest).enqueue(new Callback() {
+                                @Override
+                                public void onFailure(Call call, IOException e) { e.printStackTrace(); }
+
+                                @Override
+                                public void onResponse(Call call, Response response) {}
+                            });
                         }
 
-                        RequestBody requestBody = builder.build();
-
-                        Request mailRequest = new Request.Builder()
-                                .url(MAIL_SEND_URL)
-                                .post(requestBody)
-                                .addHeader("Authorization", "Bearer " + token)
-                                .build();
-
-                        client.newCall(mailRequest).enqueue(new Callback() {
-                            @Override
-                            public void onFailure(Call call, IOException e) {
-                                runOnUiThread(() -> Toast.makeText(ComposeActivity.this, "שגיאה בשליחת מייל", Toast.LENGTH_SHORT).show());
-                            }
-
-                            @Override
-                            public void onResponse(Call call, Response response) throws IOException {
-                                runOnUiThread(() -> {
-                                    if (response.isSuccessful()) {
-                                        if (draftId != null && !draftId.isEmpty()) {
-                                            Request deleteRequest = new Request.Builder()
-                                                    .url("http://10.0.2.2:4000/api/mails/" + draftId)
-                                                    .delete()
-                                                    .addHeader("Authorization", "Bearer " + token)
-                                                    .build();
-
-                                            client.newCall(deleteRequest).enqueue(new Callback() {
-                                                @Override
-                                                public void onFailure(Call call, IOException e) {
-                                                    // לא קריטי אם זה נכשל, רק נרשום שגיאה
-                                                    e.printStackTrace();
-                                                }
-
-                                                @Override
-                                                public void onResponse(Call call, Response response) throws IOException {
-                                                    if (response.isSuccessful()) {
-                                                        // טיוטה נמחקה מהשרת
-                                                    }
-                                                }
-                                            });
-                                        }
-
-                                        Toast.makeText(ComposeActivity.this, "המייל נשלח בהצלחה!", Toast.LENGTH_SHORT).show();
-                                        Intent intent = new Intent(ComposeActivity.this, MailHomeActivity.class);
-                                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                                        startActivity(intent);
-                                    } else {
-                                        Toast.makeText(ComposeActivity.this, "שגיאה בשליחה", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                            }
-                        });
-
-                    } catch (Exception e) {
-                        runOnUiThread(() -> Toast.makeText(ComposeActivity.this, "שגיאה פנימית", Toast.LENGTH_SHORT).show());
+                        Toast.makeText(ComposeActivity.this, "המייל נשלח בהצלחה!", Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(ComposeActivity.this, MailHomeActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        startActivity(intent);
+                    } else {
+                        Toast.makeText(ComposeActivity.this, "שגיאה בשליחה", Toast.LENGTH_SHORT).show();
                     }
-                }
-            });
-
-        } catch (Exception e) {
-            Toast.makeText(this, "שגיאה בבניית הבקשה", Toast.LENGTH_SHORT).show();
-        }
+                });
+            }
+        });
     }
 
     private String getFileName(Uri uri) {
