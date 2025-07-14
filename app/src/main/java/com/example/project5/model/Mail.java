@@ -54,14 +54,15 @@ public class Mail {
                 mail.label.add(labelsArray.getString(i));
             }
         }
-
-        if (obj.has("sender")) {
-            JSONObject sender = obj.getJSONObject("sender");
+        if (obj.has("from") && obj.get("from") instanceof JSONObject) {
+            JSONObject sender = obj.getJSONObject("from");
             mail.firstName = sender.optString("first_name", "");
             mail.lastName = sender.optString("last_name", "");
             mail.mail = sender.optString("mail", "");
             mail.profileImage = sender.optString("profileImage", "");
         }
+
+
 
         // ✅ קריאת מצורפים מהשרת
         if (obj.has("attachments")) {

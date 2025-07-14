@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
+
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 
@@ -14,8 +16,11 @@ import com.example.project5.R;
 import com.example.project5.model.Mail;
 import com.example.project5.utils.SpamUtils;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -87,14 +92,14 @@ public class MailDetailActivity extends AppCompatActivity {
             Intent intent = new Intent(this, ComposeActivity.class);
             intent.putExtra("replyTo", mail.fromMail);
             intent.putExtra("replySubject", "Re: " + mail.subject);
-            intent.putExtra("replyBody", "\n\n--- הודעה מקורית ---\n" + mail.body);
+            intent.putExtra("replyBody", "\n\n--- original message ---\n" + mail.body);
             startActivity(intent);
         });
 
         btnForward.setOnClickListener(v -> {
             Intent intent = new Intent(this, ComposeActivity.class);
             intent.putExtra("replySubject", "Fwd: " + mail.subject);
-            intent.putExtra("replyBody", "\n\n--- העברת הודעה ---\n" + mail.body);
+            intent.putExtra("replyBody", "\n\n--- message forward ---\n" + mail.body);
             startActivity(intent);
         });
 
@@ -114,9 +119,15 @@ public class MailDetailActivity extends AppCompatActivity {
 
         if (mail.profileImage != null && !mail.profileImage.isEmpty()) {
             String url = "http://10.0.2.2:4000/" + mail.profileImage.replace("\\", "/");
-            Glide.with(this).load(url).placeholder(R.drawable.ic_avatar).into(ivAvatar);
+            Glide.with(this)
+                    .load(url)
+                    .placeholder(R.drawable.ic_avatar)
+                    .error(R.drawable.ic_avatar) // ← במקרה שהתמונה לא נטענת
+                    .circleCrop()
+                    .into(ivAvatar);
+        } else {
+            ivAvatar.setImageResource(R.drawable.ic_avatar); // ← ברירת מחדל
         }
-
         updateStarIcon();
     }
 
@@ -145,21 +156,19 @@ public class MailDetailActivity extends AppCompatActivity {
             popup.getMenu().findItem(R.id.action_mark_as_spam).setVisible(false);
         }
 
-        if ("spam".equalsIgnoreCase(mail.category)) {
-            popup.getMenu().add("סמן כלא ספאם")
-                    .setOnMenuItemClickListener(item -> {
-                        removeMailFromSpam();
-                        return true;
-                    });
+        // ✨ הצגת כפתור הסרת תווית רק אם יש תוויות
+        if (mail.label != null && !mail.label.isEmpty()) {
+            popup.getMenu().findItem(R.id.action_remove_label).setVisible(true);
+        } else {
+            popup.getMenu().findItem(R.id.action_remove_label).setVisible(false);
         }
-
 
         popup.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_add_label) {
-                Toast.makeText(this, "תמיכה עתידית: הוסף תווית", Toast.LENGTH_SHORT).show();
+                showLabelSelectionDialog();
                 return true;
             } else if (item.getItemId() == R.id.action_remove_label) {
-                Toast.makeText(this, "תמיכה עתידית: הסר תווית", Toast.LENGTH_SHORT).show();
+                showLabelRemovalDialog(); // ← פונקציה חדשה שניצור מיד
                 return true;
             } else if (item.getItemId() == R.id.action_mark_as_spam) {
                 markMailAsSpam();
@@ -173,6 +182,184 @@ public class MailDetailActivity extends AppCompatActivity {
 
         popup.show();
     }
+    private void showLabelRemovalDialog() {
+        List<String> currentLabels = mail.label;
+        if (currentLabels == null || currentLabels.isEmpty()) {
+            Toast.makeText(this, "אין תוויות להסרה", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] labelArray = currentLabels.toArray(new String[0]);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("choose label");
+        builder.setItems(labelArray, (dialog, which) -> {
+            String selectedLabel = labelArray[which];
+            removeLabelFromMail(mail.id, selectedLabel);
+        });
+        builder.setNegativeButton("cancel", null);
+        builder.show();
+    }
+    private void removeLabelFromMail(String mailId, String labelToRemove) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("PATCH");
+                conn.setRequestProperty("Content-Type", "application/json");
+
+                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                conn.setDoOutput(true);
+
+                List<String> updatedLabels = new ArrayList<>(mail.label != null ? mail.label : new ArrayList<>());
+                updatedLabels.remove(labelToRemove); // ← הסרה
+
+                JSONObject payload = new JSONObject();
+                payload.put("label", new JSONArray(updatedLabels));
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.close();
+
+                int responseCode = conn.getResponseCode();
+
+                runOnUiThread(() -> {
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        Toast.makeText(this, "תוית הוסרה: " + labelToRemove, Toast.LENGTH_SHORT).show();
+                        mail.label = updatedLabels; // ← עדכון מקומי
+                    } else {
+                        Toast.makeText(this, "שגיאה בהסרת תוית", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "שגיאה ברשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void showLabelSelectionDialog() {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/labels"); // ← כתובת ל־GET של כל התוויות
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+
+                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    Scanner scanner = new Scanner(conn.getInputStream());
+                    StringBuilder response = new StringBuilder();
+                    while (scanner.hasNext()) {
+                        response.append(scanner.nextLine());
+                    }
+                    scanner.close();
+
+                    JSONArray jsonArray = new JSONArray(response.toString());
+                    List<String> labelNames = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject labelObj = jsonArray.getJSONObject(i);
+                        String name = labelObj.getString("name");
+                        labelNames.add(name);
+                    }
+
+                    runOnUiThread(() -> showLabelPickerDialog(labelNames));
+
+                } else {
+                    runOnUiThread(() -> Toast.makeText(this, "שגיאה בקבלת תוויות", Toast.LENGTH_SHORT).show());
+                }
+
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "שגיאה ברשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+    private void showLabelPickerDialog(List<String> labels) {
+        if (labels == null || labels.isEmpty()) {
+            Toast.makeText(this, "לא נמצאו תוויות", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] labelArray = labels.toArray(new String[0]);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("choose label");
+        builder.setItems(labelArray, (dialog, which) -> {
+            String selectedLabel = labelArray[which];
+            addLabelToMail(mail.id, selectedLabel);
+        });
+        builder.setNegativeButton("cancel", null);
+        builder.show();
+    }private void addLabelToMail(String mailId, String label) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("PATCH");
+                conn.setRequestProperty("Content-Type", "application/json");
+
+                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                conn.setDoOutput(true);
+
+                // בניית רשימת תוויות נקייה
+                Set<String> cleanLabels = new HashSet<>();
+                if (mail.label != null) {
+                    for (String lbl : mail.label) {
+                        if (lbl != null && !lbl.trim().isEmpty() && !lbl.contains("[") && !lbl.contains("]")) {
+                            cleanLabels.add(lbl.trim());
+                        }
+                    }
+                }
+
+                if (label != null && !label.trim().isEmpty()) {
+                    cleanLabels.add(label.trim());
+                }
+
+                // בניית ה־JSON לשליחה
+                JSONObject payload = new JSONObject();
+                payload.put("label", new JSONArray(new ArrayList<>(cleanLabels)));
+
+                Log.d("DEBUG", "שולחת לשרת תוויות: " + payload.toString());
+
+                OutputStream os = conn.getOutputStream();
+                os.write(payload.toString().getBytes("UTF-8"));
+                os.close();
+
+                int responseCode = conn.getResponseCode();
+                runOnUiThread(() -> {
+                    Log.d("DEBUG", "קיבלתי קוד תגובה: " + responseCode);
+                    if (responseCode == HttpURLConnection.HTTP_OK) {
+                        Toast.makeText(this, "תוית \"" + label + "\" נוספה", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "שגיאה בהוספת תוית", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "שגיאה ברשת: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Log.e("DEBUG", "שגיאה ב־addLabelToMail: " + e.getMessage());
+                });
+            }
+        }).start();
+    }
+
 
     private void moveToTrash(String mailId) {
         updateMailCategory(mailId, "trash", "הועבר לאשפה");
@@ -260,11 +447,25 @@ public class MailDetailActivity extends AppCompatActivity {
                 JSONObject payload = new JSONObject();
                 payload.put("category", category);
 
+                Log.d("DEBUG", "שולחת עדכון קטגוריה: " + payload.toString() + " למייל: " + mailId);
+
                 OutputStream os = conn.getOutputStream();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
 
                 int responseCode = conn.getResponseCode();
+                Log.d("DEBUG", "קוד תגובה מהשרת: " + responseCode);
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(
+                        responseCode >= 200 && responseCode < 300 ? conn.getInputStream() : conn.getErrorStream()
+                ));
+                StringBuilder responseText = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    responseText.append(line);
+                }
+                reader.close();
+                Log.d("DEBUG", "תשובת שרת: " + responseText);
 
                 runOnUiThread(() -> {
                     if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -277,9 +478,11 @@ public class MailDetailActivity extends AppCompatActivity {
 
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                Log.e("DEBUG", "שגיאה ב־updateMailCategory: " + e.getMessage(), e);
             }
         }).start();
     }
+
 
     private void updateStarOnServer(String mailId, boolean isStarred) {
         new Thread(() -> {

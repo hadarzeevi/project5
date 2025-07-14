@@ -224,7 +224,7 @@ public class SidebarFragment extends Fragment {
 
         } catch (Exception e) {
             labelItem.setBackground(createRoundedBackground(Color.LTGRAY));
-            tv.setTextColor(Color.DKGRAY);
+            tv.setTextColor(Color.BLACK);
         }
 
         // בעת לחיצה על תווית

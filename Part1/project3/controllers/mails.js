@@ -19,7 +19,7 @@ exports.get50Emails = async (req, res) => {
     .sort({ timestamp: -1 })
     .skip(skip)
     .limit(pageSize)
-    .populate('from', 'mail username')
+    .populate('from', 'mail username first_name last_name profileImage')
     .populate('to', 'mail username');
 
     const totalEmails = await Email.countDocuments({

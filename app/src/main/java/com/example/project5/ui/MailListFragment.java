@@ -120,7 +120,6 @@ public class MailListFragment extends Fragment {
 
         return view;
     }
-
     private void loadMails(String category) {
         progressBar.setVisibility(View.VISIBLE);
 
@@ -158,17 +157,15 @@ public class MailListFragment extends Fragment {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     Mail mail = Mail.fromJson(obj);
 
-                    // בדיקת ספאם - גם בדיקה רגילה וגם בדיקת קישורים
-                    boolean isSpam = checkIfSpam(mail.subject, mail.body) ||
-                            SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body);
+                    // בדיקת ספאם (בלי לשנות את הקטגוריה)
+                    boolean isSpamByContent = checkIfSpam(mail.subject, mail.body);
+                    boolean hasBlacklistedLinks = SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body);
 
-                    if ("inbox".equalsIgnoreCase(mail.category) && isSpam) {
-                        mail.category = "spam";
-                        // אם המייל נכנס לספאם בגלל קישורים, נוסיף את הקישורים לblacklist
-                        if (SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body)) {
-                            List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
-                            SpamUtils.addLinksToBlacklist(getContext(), links);
-                        }
+                    // אם המייל כבר סומן כ-spam מהשרת, נוודא שהקישורים שלו ברשימה השחורה
+                    if ("spam".equalsIgnoreCase(mail.category) && hasBlacklistedLinks) {
+                        List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
+                        SpamUtils.addLinksToBlacklist(getContext(), links);
+                        Log.d("loadMails", "הוספנו קישורים ל-blacklist עבור מייל שכבר היה ב-spam");
                     }
 
                     allMails.add(mail);
@@ -194,6 +191,7 @@ public class MailListFragment extends Fragment {
             }
         }).start();
     }
+
 
     private boolean checkIfSpam(String subject, String body) {
         try {
