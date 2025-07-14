@@ -2,15 +2,32 @@ import { useState, useEffect } from 'react';
 import '../styles/MailList.css';
 import LabelDropdown from './LabelDropdown';
 
-// Represents a single mail item, including logic for loading the sender's user info and label management.
+
+// הכנתי פונקציה עזר למיפוי _id ל-id בשורת המיילים
+function mapMailId(mail) {
+  return {
+    ...mail,
+    id: mail._id ? mail._id.toString() : mail.id,
+  };
+}
+
 function MailItemWithUser({ mail, selectedMail, onSelect, darkMode, 
   toggleStar, moveToTrash, onAddLabelToMail, onRemoveLabelFromMail }) {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
 
+  console.log("MailView mail:", mail);
+
   useEffect(() => {
-    if (!mail.from) return;
+    console.log("MailView useEffect activated. Mail ID:", mail?._id);
+    console.log("MailView mail:", mail);
+console.log("mail.from:", mail?.from);
+
+    if (!mail || !mail.from) {
+    setUser(null);
+    return;
+  }
 
     async function fetchUser() {
       setLoadingUser(true);
@@ -33,13 +50,12 @@ function MailItemWithUser({ mail, selectedMail, onSelect, darkMode,
     }
 
     fetchUser();
-  }, [mail.from]);
+  }, [mail?._id]);
 
   const isSelected = selectedMail?.id === mail.id;
   const isUnread = !mail.isRead;
   const hasAttachments = mail.attachments && mail.attachments.length > 0;
   
-  // Determine the sender's name, showing "Loading..." if the user is still being fetched
   const senderName = loadingUser 
     ? 'Loading...' 
     : user 
@@ -49,7 +65,7 @@ function MailItemWithUser({ mail, selectedMail, onSelect, darkMode,
   return (
     <div
       key={mail.id}
-      onClick={() => onSelect(mail)}
+      onClick={() => onSelect({ ...mail })}
       className={`mail-item 
         ${isSelected ? 'selected' : ''} 
         ${isUnread ? 'unread' : ''} 
@@ -85,6 +101,7 @@ function MailItemWithUser({ mail, selectedMail, onSelect, darkMode,
               </button>
               
               <LabelDropdown
+                // יש להעביר props רלוונטיים לפי הצורך כאן
               />
             </div>
           )}
@@ -97,14 +114,12 @@ function MailItemWithUser({ mail, selectedMail, onSelect, darkMode,
             }}
           >
             <i className="bi bi-trash" style={{ fontSize: '20px' }}></i>
-
           </button>
           )}
           {mail.isImportant && <div className="important-dot"></div>}
           {hasAttachments && (
             <div className="attachment-indicator" title={`${mail.attachments.length} attachment${mail.attachments.length > 1 ? 's' : ''}`}>
               <i className="bi bi-paperclip" style={{ fontSize: '14px' }}></i>
-
             </div>
           )}
         </div>
@@ -186,16 +201,20 @@ function MailList({ mails,
   selectedLabel,
   searchTerm
   }) {
+
+  // מפה את ה־mails עם id
+  const mappedMails = mails.map(mapMailId);
+
   const [selectedMails, setSelectedMails] = useState([]);
   const [showBulkLabelDropdown, setShowBulkLabelDropdown] = useState(false);
 
   const toggleSelectMail = (mailId) => {
-  setSelectedMails(prev =>
-    prev.includes(mailId) ? prev.filter(id => id !== mailId) : [...prev, mailId]
-  );
-};
+    setSelectedMails(prev =>
+      prev.includes(mailId) ? prev.filter(id => id !== mailId) : [...prev, mailId]
+    );
+  };
 
-const clearSelection = () => setSelectedMails([]);
+  const clearSelection = () => setSelectedMails([]);
   const themeClass = darkMode ? 'dark' : 'light';
   
   if (loading) {
@@ -203,7 +222,6 @@ const clearSelection = () => setSelectedMails([]);
       <div className={`mail-list-wrapper center ${themeClass}`}>
         <div className="loading-message">
           <i className="bi bi-arrow-repeat" style={{ fontSize: '20px' }}></i>
-
           <span>Loading emails...</span>
         </div>
       </div>
@@ -221,11 +239,10 @@ const clearSelection = () => setSelectedMails([]);
     );
   }
 
-  if (mails.length === 0) {
+  if (mappedMails.length === 0) {
     return (
       <div className={`mail-list-wrapper ${themeClass}`}>
         <div className="mail-list-header">
-
           <div className="header-left">
             <h2 className="header-title">{selectedCategory}</h2>
           </div>
@@ -247,105 +264,101 @@ const clearSelection = () => setSelectedMails([]);
       </div>
     );
   }
-// dds a label to a mail by its ID
+
+  // הפונקציות togglelabel ו-deleteMilFromLabel תיקנתי את השם מ-label ל-labels ושימוש ב-id
+
   const togglelabel = async (mailId, labelname) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
-    const mailToMove = mails.find(mail => mail.id === mailId);
-    const updatedLabelIds = [...mailToMove.label, labelname];
-    const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ label: updatedLabelIds }),
-    });
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
+      const mailToMove = mappedMails.find(mail => mail.id === mailId);
+      const updatedLabels = mailToMove.labels ? [...mailToMove.labels, labelname] : [labelname];
 
-    if (!res.ok) {
-      throw new Error("Failed to toggle label");
+      const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ labels: updatedLabels }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to toggle label");
+      }
+
+      setMails((prevMails) =>
+        prevMails.map((mail) =>
+          (mail._id?.toString() === mailId || mail.id === mailId)
+            ? { ...mail, labels: updatedLabels }
+            : mail
+        )
+      );
+    } catch (err) {
+      console.error(err);
     }
+  };
 
-    setMails((prevMails) =>
-      prevMails.map((mail) =>
-        mail.id === mailId ? { ...mail, label: updatedLabelIds } : mail
-      )
-    );
-  } catch (err) {
-    console.error(err);
-  }
-};
+  const deleteMilFromLabel = async (mailId, labelname) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
+      const mailToMove = mappedMails.find(mail => mail.id === mailId);
+      const updatedLabels = mailToMove.labels.filter(l => l !== labelname);
 
-// removes a label from a mail by its ID
-const deleteMilFromLabel = async (mailId, labelname) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
-    const mailToMove = mails.find(mail => mail.id === mailId);
-    const updatedLabelIds = mailToMove.label.filter(l => l !== labelname);
+      const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ labels: updatedLabels }),
+      });
 
-    const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ label: updatedLabelIds }),
-    });
+      if (!res.ok) {
+        throw new Error("Failed to delete mail from label");
+      }
 
-
-    if (!res.ok) {
-      throw new Error("Failed to delete mail from label");
+      setMails((prevMails) =>
+        prevMails.map((mail) =>
+          (mail._id?.toString() === mailId || mail.id === mailId)
+            ? { ...mail, labels: updatedLabels }
+            : mail
+        )
+      );
+    } catch (err) {
+      console.error(err);
     }
+  };
 
-    setMails((prevMails) =>
-      prevMails.map((mail) =>
-        mail.id === mailId ? { ...mail, label: updatedLabelIds } : mail
-      )
-    );
-  } catch (err) {
-    console.error(err);
-  }
-};
+  // מסנן לפי קטגוריה ותווית
+  const filteredMails = mappedMails.filter((mail) => {
+    const category = selectedCategory?.toLowerCase();
+    const label = selectedLabel;
+    if (category === 'starred') {
+      return mail.isStarred === true;
+    }
+    if (category) {
+      return mail.category?.toLowerCase() === category;
+    }
+    if (label) {
+      return mail.labels && mail.labels.includes(label);
+    }
+    return true;
+  });
 
-// Filter mails based on selected category and label
-const filteredMails = mails.filter((mail) => {
-  const category = selectedCategory?.toLowerCase();
-  const label = selectedLabel;
-  // check if the mail is in starred category
-  if (category === 'starred') {
-    return mail.isStarred === true;
-  }
-
-  // if there is a selected category — filter by category
-  if (category) {
-    return mail.category?.toLowerCase() === category;
-  }
-
-  // if there isn't a selected category— filter by label
-  if (label) {
-    return mail.label && mail.label.includes(label);
+  function highlightSearch(text, searchTerm) {
+    if (!searchTerm || !text) return text;
+    const regex = new RegExp(`(${searchTerm})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
   }
 
-  // if there is no selected category or label, return all mails
-  return true;
-});
-
-function highlightSearch(text, searchTerm) {
-  if (!searchTerm || !text) return text;
-  const regex = new RegExp(`(${searchTerm})`, 'gi');
-  return text.replace(regex, '<mark>$1</mark>');
-}
   return (
     <div className={`mail-list-wrapper ${themeClass}`}>
-     <div className="mail-list-header">
-        {/* left side */}
+      <div className="mail-list-header">
         <div className="header-left">
           <h2 className="header-title">{selectedLabel || selectedCategory}</h2>
         </div>
-        
-        {/* right side */}
         <div className="header-actions">
           <div className="bulk-actions-buttons">
             {selectedLabel ? (
@@ -372,7 +385,6 @@ function highlightSearch(text, searchTerm) {
                       fontSize: '18px'
                     }}
                   ></i>
-
                 </div>
               </button>
             ) : (
@@ -384,9 +396,7 @@ function highlightSearch(text, searchTerm) {
                   title="ניהול תוויות"
                 >
                   <i className="bi bi-tag" style={{ fontSize: '18px' }}></i>
-
                 </button>
-
                 <LabelDropdown
                   isOpen={showBulkLabelDropdown}
                   onClose={() => setShowBulkLabelDropdown(false)}
@@ -407,54 +417,49 @@ function highlightSearch(text, searchTerm) {
               </div>
             )}
 
-
-              <button
-                className="icon-button"
-                onClick={async () => {
-                  try {
-                    if (selectedCategory === 'trash' || selectedCategory === 'drafts') {
-                      const mailsToDelete = selectedMails
-                        .map((id) => mails.find((m) => m.id === id))
-                        .filter(Boolean);
-                      
-                      await handlePermanentDelete(mailsToDelete);
-                    } else {
-                      selectedMails.forEach((id) => {
-                        moveToTrash(id);
-                      });
-                      clearSelection();
-                    }
-                  } catch (error) {
-                    console.error('Error deleting mails:', error);
+            <button
+              className="icon-button"
+              onClick={async () => {
+                try {
+                  if (selectedCategory === 'trash' || selectedCategory === 'drafts') {
+                    const mailsToDelete = selectedMails
+                      .map((id) => mappedMails.find((m) => m.id === id))
+                      .filter(Boolean);
+                    await handlePermanentDelete(mailsToDelete);
+                  } else {
+                    selectedMails.forEach((id) => {
+                      moveToTrash(id);
+                    });
+                    clearSelection();
                   }
-                }}
-                disabled={selectedMails.length === 0}
-                aria-label={selectedCategory === 'trash' ? "מחק לצמיתות" : "העבר לאשפה"}
-                title={selectedCategory === 'trash' ? "מחק לצמיתות" : "העבר לאשפה"}
-              >
-                <i className="bi bi-trash" style={{ fontSize: '18px' }}></i>
+                } catch (error) {
+                  console.error('Error deleting mails:', error);
+                }
+              }}
+              disabled={selectedMails.length === 0}
+              aria-label={selectedCategory === 'trash' ? "מחק לצמיתות" : "העבר לאשפה"}
+              title={selectedCategory === 'trash' ? "מחק לצמיתות" : "העבר לאשפה"}
+            >
+              <i className="bi bi-trash" style={{ fontSize: '18px' }}></i>
+            </button>
 
-              </button>
+            <button
+              onClick={clearSelection}
+              className="icon-button"
+              aria-label="בטל בחירה"
+              title="בטל בחירה"
+            >
+              <i className="bi bi-x-circle" style={{ fontSize: '18px' }}></i>
+            </button>
 
-              <button
-                onClick={clearSelection}
-                className="icon-button"
-                aria-label="בטל בחירה"
-                title="בטל בחירה"
-              >
-                <i className="bi bi-x-circle" style={{ fontSize: '18px' }}></i>
-
-              </button>
-
-              <button
-                onClick={() => setSelectedMails(filteredMails.map(m => m.id))}
-                className="icon-button"
-                aria-label="בחר הכל"
-                title="בחר הכל"
-              >
-                <i className="bi bi-circle" style={{ fontSize: '18px' }}></i>
-
-              </button>
+            <button
+              onClick={() => setSelectedMails(filteredMails.map(m => m.id))}
+              className="icon-button"
+              aria-label="בחר הכל"
+              title="בחר הכל"
+            >
+              <i className="bi bi-circle" style={{ fontSize: '18px' }}></i>
+            </button>
             
             <button
               className="icon-button"
@@ -463,7 +468,6 @@ function highlightSearch(text, searchTerm) {
               title="רענן מיילים"
             >
               <i className="bi bi-arrow-repeat" style={{ fontSize: '18px' }}></i>
-
             </button>
           </div>
           <div className="pagination-controls">
@@ -474,7 +478,6 @@ function highlightSearch(text, searchTerm) {
               title="עמוד קודם"
             >
               <i className="bi bi-chevron-left" style={{ fontSize: '18px' }}></i>
-
             </button>
 
             <span className="page-indicator">
@@ -487,14 +490,13 @@ function highlightSearch(text, searchTerm) {
               className="page-arrow"
               title="עמוד הבא"
             >
-              <i className="bi bi-chevron-right" style={{ fontSize: '18px' }}></i>            </button>
+              <i className="bi bi-chevron-right" style={{ fontSize: '18px' }}></i>
+            </button>
           </div>
         </div>
       </div>
 
-
       <div className="mail-list-scroll">
-        
         {filteredMails.map((mail) => {
           const isSelected = selectedMail?.id === mail.id;
           const isUnread = !mail.isRead;
@@ -512,7 +514,6 @@ function highlightSearch(text, searchTerm) {
                 <div className="mail-item-meta">
                   <div className="mail-item-left">
                     <div className="mail-controls">
-
                       <input
                         type="checkbox"
                         checked={selectedMails.includes(mail.id)}
@@ -521,7 +522,6 @@ function highlightSearch(text, searchTerm) {
                           toggleSelectMail(mail.id);
                         }}
                         onClick={(e) => e.stopPropagation()}
-
                         className="mail-checkbox"
                       />
                       {mail.category !== 'trash' && (
@@ -536,7 +536,6 @@ function highlightSearch(text, searchTerm) {
                             className={`bi ${mail.isStarred ? 'bi-star-fill' : 'bi-star'} star-icon`}
                             style={{ fontSize: '16px' }}
                           ></i>
-
                         </button>
                       )}
                     </div>
@@ -566,22 +565,22 @@ function highlightSearch(text, searchTerm) {
                     </div>
                   </div>
 
-                <div className="mail-item-right">
-                  <span
-                    className="mail-date"
-                    dangerouslySetInnerHTML={{
-                      __html: highlightSearch(
-                        new Date(mail.timestamp).toLocaleString("en-US", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        }),
-                        searchTerm
-                      ),
-                    }}
-                  />
-                  {mail.isImportant && <div className="important-dot"></div>}
+                  <div className="mail-item-right">
+                    <span
+                      className="mail-date"
+                      dangerouslySetInnerHTML={{
+                        __html: highlightSearch(
+                          new Date(mail.timestamp).toLocaleString("en-US", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          }),
+                          searchTerm
+                        ),
+                      }}
+                    />
+                    {mail.isImportant && <div className="important-dot"></div>}
+                  </div>
                 </div>
-              </div>
               </div>
             </div>
           );

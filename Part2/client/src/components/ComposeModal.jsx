@@ -46,6 +46,7 @@ const handleSend = async () => {
     
   try {
     const token = localStorage.getItem("token");
+    console.log("token:", token);
 
     // check if the email is spam using the blacklist API
     const spamResponse = await fetch('http://localhost:4000/api/blacklist/check', {
@@ -58,7 +59,9 @@ const handleSend = async () => {
     });
 
     const spamResult = await spamResponse.json();
+    console.log("spamResult:", spamResult);
     const isSpam = spamResult.spam;
+    console.log("isSpam:", isSpam);
 
     // send the email even if it's marked as spam
       
@@ -115,6 +118,7 @@ const handleSend = async () => {
           alert("Error: " + (error.message || error.error));
         }
       } else {
+        console.log("to:", to);
         // send email without attachments
       const response = await fetch('http://localhost:4000/api/mails', {
         method: 'POST',
