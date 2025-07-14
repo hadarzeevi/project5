@@ -605,6 +605,7 @@ public class MailDetailActivity extends AppCompatActivity {
                 AttachmentAdapter adapter = new AttachmentAdapter(mail.attachments, this::downloadAttachment);
                 rvAttachments.setLayoutManager(new LinearLayoutManager(this));
                 rvAttachments.setAdapter(adapter);
+                rvAttachments.setVisibility(View.VISIBLE);
             } catch (Exception e) {
                 Log.e("MailDetailActivity", "Error setting up attachment adapter: " + e.getMessage());
                 Toast.makeText(this, "שגיאה בהצגת קבצים מצורפים", Toast.LENGTH_SHORT).show();
