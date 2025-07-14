@@ -212,6 +212,8 @@ public class SpamUtils {
     private static void updateMailCategoryOnServer(Context context, String mailId, String category) {
         new Thread(() -> {
             try {
+                Log.d("SpamUtils", "מנסה לעדכן קטגוריה ל: " + category + " עבור מייל " + mailId);
+
                 URL url = new URL(API_BASE_URL + "/mails/" + mailId);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("PATCH");
@@ -221,28 +223,43 @@ public class SpamUtils {
                 String token = prefs.getString("token", null);
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer " + token);
+                } else {
+                    Log.e("SpamUtils", "אין טוקן! אי אפשר לשלוח את הבקשה.");
+                    return;
                 }
 
                 conn.setDoOutput(true);
                 JSONObject payload = new JSONObject();
                 payload.put("category", category);
+                payload.put("previousCategory", category); // אם רלוונטי לך
+
+                Log.d("SpamUtils", "שולחת לשרת את ה־payload: " + payload.toString());
 
                 OutputStream os = conn.getOutputStream();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
 
                 int responseCode = conn.getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    Log.d(TAG, "Mail category updated successfully to: " + category);
-                } else {
-                    Log.e(TAG, "Failed to update mail category. Response code: " + responseCode);
+                Log.d("SpamUtils", "קיבלתי קוד תגובה: " + responseCode);
+
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                    StringBuilder errorMsg = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        errorMsg.append(line);
+                    }
+                    reader.close();
+                    Log.e("SpamUtils", "שגיאה מהשרת: " + errorMsg);
                 }
 
             } catch (Exception e) {
-                Log.e(TAG, "Error updating mail category: " + e.getMessage());
+                Log.e("SpamUtils", "שגיאה בעדכון קטגוריה לשרת: " + e.getMessage(), e);
             }
         }).start();
     }
+
+
 
     /**
      * בדיקת ספאם מול השרת (אופציונלי)

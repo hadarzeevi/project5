@@ -2,6 +2,7 @@
 package com.example.project5.ui;
 
 import android.graphics.Typeface;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -75,6 +76,7 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
         // הצגת תמונת פרופיל
         if (mail.profileImage != null && !mail.profileImage.isEmpty()) {
             String url = "http://10.0.2.2:4000/" + mail.profileImage.replace("\\", "/");
+            Log.d("MailAdapter", "Loading image from URL: " + url);
             Glide.with(holder.itemView.getContext())
                     .load(url)
                     .placeholder(R.drawable.ic_avatar)
@@ -83,6 +85,7 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
         } else {
             holder.ivAvatar.setImageResource(R.drawable.ic_avatar);
         }
+        Log.d("MailAdapter", "profileImage path: " + mail.profileImage);
 
         // כוכב
         holder.ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
