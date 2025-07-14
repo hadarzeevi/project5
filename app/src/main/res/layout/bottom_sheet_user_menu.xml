@@ -4,7 +4,6 @@
     android:layout_height="wrap_content"
     android:padding="16dp">
 
-    <!-- תצוגת פרופיל -->
     <LinearLayout
         android:id="@+id/layoutProfileView"
         android:layout_width="match_parent"
@@ -57,7 +56,6 @@
             android:backgroundTint="@android:color/holo_red_light" />
     </LinearLayout>
 
-    <!-- תצוגת עריכת פרופיל -->
     <ScrollView
         android:id="@+id/layoutEditProfile"
         android:layout_width="match_parent"

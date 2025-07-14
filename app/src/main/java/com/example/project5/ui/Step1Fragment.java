@@ -62,12 +62,10 @@ public class Step1Fragment extends Fragment {
                 return;
             }
 
-            // שומרים ל-Activity
             parentActivity.firstName = firstName;
             parentActivity.lastName = lastName;
             parentActivity.username = username;
 
-            // ממשיכים לשלב הבא
             parentActivity.goToNextStep();
         });
 

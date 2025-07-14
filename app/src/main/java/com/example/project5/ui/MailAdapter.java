@@ -73,7 +73,7 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
             holder.tvSubject.setTypeface(null, Typeface.NORMAL);
         }
 
-        // הצגת תמונת פרופיל
+        // showing profile picture
         if (mail.profileImage != null && !mail.profileImage.isEmpty()) {
             String url = "http://10.0.2.2:4000/" + mail.profileImage.replace("\\", "/");
             Log.d("MailAdapter", "Loading image from URL: " + url);
@@ -87,13 +87,11 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
         }
         Log.d("MailAdapter", "profileImage path: " + mail.profileImage);
 
-        // כוכב
+        // star
         holder.ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
 
-        // הצגת אייקון קובץ אם יש קובץ מצורף
+        // attach icon if there is an attachment
         holder.ivAttachment.setVisibility(mail.hasAttachment ? View.VISIBLE : View.GONE);
-
-        // האזנה להקלקות
         holder.itemView.setOnClickListener(v -> onMailClicked.accept(mail));
         holder.ivStar.setOnClickListener(v -> onStarClicked.accept(mail));
     }
@@ -133,7 +131,7 @@ public class MailAdapter extends RecyclerView.Adapter<MailAdapter.MailViewHolder
         while (start >= 0) {
             int end = start + query.length();
             builder.setSpan(
-                    new BackgroundColorSpan(0xFFFFFF00),  // צהוב
+                    new BackgroundColorSpan(0xFFFFFF00),
                     start, end,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             );

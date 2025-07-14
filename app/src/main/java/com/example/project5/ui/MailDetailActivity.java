@@ -50,44 +50,34 @@ public class MailDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mail_detail);
 
-        // אתחול רכיבי ממשק
+        // init
         initializeViews();
 
         try {
             String mailJson = getIntent().getStringExtra("MAIL_JSON");
             if (mailJson == null || mailJson.isEmpty()) {
-                Log.e("MailDetailActivity", "No mail JSON provided");
                 Toast.makeText(this, "שגיאה: אין נתוני מייל", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
 
-            Log.d("MailDetailActivity", "Received mail JSON: " + mailJson);
-
             JSONObject json = new JSONObject(mailJson);
             mail = Mail.fromJson(json);
-            mail.debugPrint(); // ← זה יראה את כל הפרטים כולל מצורפים
-
 
             if (mail == null) {
-                Log.e("MailDetailActivity", "Failed to parse mail from JSON");
                 Toast.makeText(this, "שגיאה בפענוח נתוני המייל", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
 
-            Log.d("MailDetailActivity", "Successfully parsed mail: " + mail.id);
-
             isSpamCategory = "spam".equalsIgnoreCase(mail.category);
             loadMailData();
 
         } catch (JSONException e) {
-            Log.e("MailDetailActivity", "JSON parsing error: " + e.getMessage());
             Toast.makeText(this, "שגיאה בפענוח נתוני המייל", Toast.LENGTH_SHORT).show();
             finish();
             return;
         } catch (Exception e) {
-            Log.e("MailDetailActivity", "General error: " + e.getMessage());
             Toast.makeText(this, "שגיאה בטעינת המייל", Toast.LENGTH_SHORT).show();
             finish();
             return;
@@ -118,10 +108,10 @@ public class MailDetailActivity extends AppCompatActivity {
 
         ivTrash.setOnClickListener(v -> {
             if (isSpamCategory) {
-                // אם המייל בספאם, מחיקה לצמיתות
+                // if mail is in spam - deletePermanetly
                 deletePermanently(mail.id);
             } else {
-                // אחרת, העברה לאשפה
+                // else, move to trash
                 moveToTrash(mail.id);
             }
         });
@@ -176,12 +166,11 @@ public class MailDetailActivity extends AppCompatActivity {
 
         updateStarIcon();
 
-        // תיקון בטיפול במצורפים
+        // attach files
         try {
             displayAttachments();
         } catch (Exception e) {
             Log.e("MailDetailActivity", "Error displaying attachments: " + e.getMessage());
-            // הסתרת קונטיינר המצורפים במקרה של שגיאה
             if (attachmentsContainer != null) {
                 attachmentsContainer.setVisibility(View.GONE);
             }
@@ -215,7 +204,7 @@ public class MailDetailActivity extends AppCompatActivity {
             popup.getMenu().findItem(R.id.action_mark_as_spam).setVisible(false);
         }
 
-        // ✨ הצגת כפתור הסרת תווית רק אם יש תוויות
+        // showing delete label only if we have a label
         if (mail.label != null && !mail.label.isEmpty()) {
             popup.getMenu().findItem(R.id.action_remove_label).setVisible(true);
         } else {
@@ -227,7 +216,7 @@ public class MailDetailActivity extends AppCompatActivity {
                 showLabelSelectionDialog();
                 return true;
             } else if (item.getItemId() == R.id.action_remove_label) {
-                showLabelRemovalDialog(); // ← פונקציה חדשה שניצור מיד
+                showLabelRemovalDialog();
                 return true;
             } else if (item.getItemId() == R.id.action_mark_as_spam) {
                 markMailAsSpam();
@@ -276,7 +265,7 @@ public class MailDetailActivity extends AppCompatActivity {
                 conn.setDoOutput(true);
 
                 List<String> updatedLabels = new ArrayList<>(mail.label != null ? mail.label : new ArrayList<>());
-                updatedLabels.remove(labelToRemove); // ← הסרה
+                updatedLabels.remove(labelToRemove);
 
                 JSONObject payload = new JSONObject();
                 payload.put("label", new JSONArray(updatedLabels));
@@ -290,7 +279,7 @@ public class MailDetailActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         Toast.makeText(this, "תוית הוסרה: " + labelToRemove, Toast.LENGTH_SHORT).show();
-                        mail.label = updatedLabels; // ← עדכון מקומי
+                        mail.label = updatedLabels;
                     } else {
                         Toast.makeText(this, "שגיאה בהסרת תוית", Toast.LENGTH_SHORT).show();
                     }
@@ -305,7 +294,7 @@ public class MailDetailActivity extends AppCompatActivity {
     private void showLabelSelectionDialog() {
         new Thread(() -> {
             try {
-                URL url = new URL("http://10.0.2.2:4000/api/labels"); // ← כתובת ל־GET של כל התוויות
+                URL url = new URL("http://10.0.2.2:4000/api/labels");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
 
@@ -373,10 +362,8 @@ public class MailDetailActivity extends AppCompatActivity {
                 if (token != null) {
                     conn.setRequestProperty("Authorization", "Bearer " + token);
                 }
-
                 conn.setDoOutput(true);
-
-                // בניית רשימת תוויות נקייה
+                // build a clean label list
                 Set<String> cleanLabels = new HashSet<>();
                 if (mail.label != null) {
                     for (String lbl : mail.label) {
@@ -385,24 +372,17 @@ public class MailDetailActivity extends AppCompatActivity {
                         }
                     }
                 }
-
                 if (label != null && !label.trim().isEmpty()) {
                     cleanLabels.add(label.trim());
                 }
-
-                // בניית ה־JSON לשליחה
                 JSONObject payload = new JSONObject();
                 payload.put("label", new JSONArray(new ArrayList<>(cleanLabels)));
-
-                Log.d("DEBUG", "שולחת לשרת תוויות: " + payload.toString());
-
                 OutputStream os = conn.getOutputStream();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
 
                 int responseCode = conn.getResponseCode();
                 runOnUiThread(() -> {
-                    Log.d("DEBUG", "קיבלתי קוד תגובה: " + responseCode);
                     if (responseCode == HttpURLConnection.HTTP_OK) {
                         Toast.makeText(this, "תוית \"" + label + "\" נוספה", Toast.LENGTH_SHORT).show();
                     } else {
@@ -413,12 +393,10 @@ public class MailDetailActivity extends AppCompatActivity {
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     Toast.makeText(this, "שגיאה ברשת: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    Log.e("DEBUG", "שגיאה ב־addLabelToMail: " + e.getMessage());
                 });
             }
         }).start();
     }
-
 
     private void moveToTrash(String mailId) {
         updateMailCategory(mailId, "trash", "הועבר לאשפה");
@@ -455,39 +433,28 @@ public class MailDetailActivity extends AppCompatActivity {
     }
 
     private void markMailAsSpam() {
-        // שימוש בפונקציה המשופרת מ-SpamUtils
         SpamUtils.markMailAsSpam(this, mail.id, mail.fromMail, mail.subject, mail.body);
 
-        // הצגת הודעה למשתמש
+        // msg
         Toast.makeText(this, "המייל הועבר לספאם וקישורים נוספו לרשימה השחורה", Toast.LENGTH_LONG).show();
 
-        // הדפסת הקישורים שנמצאו (לבדיקה)
         List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
         if (!links.isEmpty()) {
-            Log.d("MailDetailActivity", "Found links: " + links);
             Toast.makeText(this, "נמצאו " + links.size() + " קישורים ונוספו לרשימה השחורה", Toast.LENGTH_SHORT).show();
         }
-
         finish();
     }
 
     private void removeMailFromSpam() {
-        // שימוש בפונקציה המשופרת מ-SpamUtils
         SpamUtils.removeMailFromSpam(this, mail.id, mail.fromMail, mail.subject, mail.body, "inbox");
-
-        // הצגת הודעה למשתמש
         Toast.makeText(this, "המייל הוסר מספאם וקישורים הוסרו מהרשימה השחורה", Toast.LENGTH_LONG).show();
-
-        // הדפסת הקישורים שהוסרו (לבדיקה)
         List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
         if (!links.isEmpty()) {
-            Log.d("MailDetailActivity", "Removed links: " + links);
             Toast.makeText(this, "הוסרו " + links.size() + " קישורים מהרשימה השחורה", Toast.LENGTH_SHORT).show();
         }
 
         finish();
     }
-
     private void updateMailCategory(String mailId, String category, String successMessage) {
         new Thread(() -> {
             try {
@@ -505,16 +472,11 @@ public class MailDetailActivity extends AppCompatActivity {
                 conn.setDoOutput(true);
                 JSONObject payload = new JSONObject();
                 payload.put("category", category);
-
-                Log.d("DEBUG", "שולחת עדכון קטגוריה: " + payload.toString() + " למייל: " + mailId);
-
                 OutputStream os = conn.getOutputStream();
                 os.write(payload.toString().getBytes("UTF-8"));
                 os.close();
 
                 int responseCode = conn.getResponseCode();
-                Log.d("DEBUG", "קוד תגובה מהשרת: " + responseCode);
-
                 BufferedReader reader = new BufferedReader(new InputStreamReader(
                         responseCode >= 200 && responseCode < 300 ? conn.getInputStream() : conn.getErrorStream()
                 ));
@@ -524,7 +486,6 @@ public class MailDetailActivity extends AppCompatActivity {
                     responseText.append(line);
                 }
                 reader.close();
-                Log.d("DEBUG", "תשובת שרת: " + responseText);
 
                 runOnUiThread(() -> {
                     if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -537,11 +498,9 @@ public class MailDetailActivity extends AppCompatActivity {
 
             } catch (Exception e) {
                 runOnUiThread(() -> Toast.makeText(this, "שגיאת רשת: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                Log.e("DEBUG", "שגיאה ב־updateMailCategory: " + e.getMessage(), e);
             }
         }).start();
     }
-
 
     private void updateStarOnServer(String mailId, boolean isStarred) {
         new Thread(() -> {
@@ -575,7 +534,6 @@ public class MailDetailActivity extends AppCompatActivity {
             }
         }).start();
     }
-    // פונקציה חדשה להצגת המצורפים
     private void displayAttachments() {
         Log.d("MailDetailActivity", "Displaying attachments for mail: " + mail.id);
 
@@ -587,7 +545,6 @@ public class MailDetailActivity extends AppCompatActivity {
         if (mail.attachments != null && !mail.attachments.isEmpty()) {
             Log.d("MailDetailActivity", "Found " + mail.attachments.size() + " attachments");
 
-            // הדפסת מידע על כל מצורף לדיבוג
             for (int i = 0; i < mail.attachments.size(); i++) {
                 Attachment attachment = mail.attachments.get(i);
                 Log.d("MailDetailActivity", "Attachment " + i + ": " +
@@ -607,19 +564,16 @@ public class MailDetailActivity extends AppCompatActivity {
                 rvAttachments.setAdapter(adapter);
                 rvAttachments.setVisibility(View.VISIBLE);
             } catch (Exception e) {
-                Log.e("MailDetailActivity", "Error setting up attachment adapter: " + e.getMessage());
                 Toast.makeText(this, "שגיאה בהצגת קבצים מצורפים", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Log.d("MailDetailActivity", "No attachments found");
             attachmentsContainer.setVisibility(View.GONE);
             tvAttachmentsTitle.setVisibility(View.GONE);
         }
     }
 
-    // פונקציה להורדת מצורף
+    // download attach
     private void downloadAttachment(Attachment attachment) {
-        Log.d("MailDetailActivity", "Downloading attachment: " + attachment.filename);
 
         if (attachment == null) {
             Toast.makeText(this, "שגיאה: קובץ לא תקין", Toast.LENGTH_SHORT).show();
@@ -628,8 +582,6 @@ public class MailDetailActivity extends AppCompatActivity {
 
         try {
             String downloadUrl;
-
-            // בדיקה אם יש נתיב לקובץ
             if (attachment.filename != null && !attachment.filename.isEmpty()) {
                 downloadUrl = "http://10.0.2.2:4000/uploads/" + attachment.filename;
                 Log.d("MailDetailActivity", "Using download URL: " + downloadUrl);
@@ -638,17 +590,13 @@ public class MailDetailActivity extends AppCompatActivity {
                 return;
             }
 
-            Log.d("MailDetailActivity", "Download URL: " + downloadUrl);
-
-            // פתיחת דפדפן להורדה
+            // open chrome to download
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
             startActivity(intent);
 
         } catch (ActivityNotFoundException e) {
-            Log.e("MailDetailActivity", "No app to handle download: " + e.getMessage());
             Toast.makeText(this, "לא ניתן לפתוח קובץ מסוג זה", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Log.e("MailDetailActivity", "Error downloading attachment: " + e.getMessage());
             Toast.makeText(this, "שגיאה בהורדת הקובץ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }

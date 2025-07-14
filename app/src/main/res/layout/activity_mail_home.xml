@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F9FAFB">
 
-    <!-- סרגל עליון -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -49,7 +47,6 @@
             android:layout_marginEnd="12dp" />
     </LinearLayout>
 
-    <!-- כפתור כתיבת מייל -->
     <Button
         android:id="@+id/btnComposeFloating"
         android:layout_width="150dp"
@@ -72,7 +69,6 @@
         android:layout_height="match_parent"
         android:layout_marginTop="80dp" />
 
-    <!-- תפריט צד -->
     <FrameLayout
         android:id="@+id/sidebar"
         android:layout_width="250dp"
@@ -82,7 +78,6 @@
         android:visibility="gone"
         android:elevation="8dp" />
 
-    <!-- שכבת Overlay לסגירת התפריט בלחיצה -->
     <FrameLayout
         android:id="@+id/sidebarOverlay"
         android:layout_width="match_parent"

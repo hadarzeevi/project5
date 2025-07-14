@@ -8,7 +8,6 @@
     android:clickable="true"
     android:focusable="true">
 
-    <!-- תמונת פרופיל -->
     <ImageView
         android:id="@+id/ivAvatar"
         android:layout_width="40dp"
@@ -18,7 +17,6 @@
         android:scaleType="centerCrop"
         android:background="@drawable/circle_mask" />
 
-    <!-- עמודת טקסטים -->
     <LinearLayout
         android:layout_weight="1"
         android:orientation="vertical"
@@ -49,14 +47,12 @@
             android:layout_height="wrap_content"/>
     </LinearLayout>
 
-    <!-- עמודת אייקונים -->
     <LinearLayout
         android:orientation="vertical"
         android:gravity="center_horizontal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content">
 
-        <!-- כוכב -->
         <ImageView
             android:id="@+id/ivStar"
             android:layout_width="24dp"
@@ -64,7 +60,6 @@
             android:src="@drawable/ic_star_border"
             android:layout_marginBottom="8dp" />
 
-        <!-- אייקון קובץ מצורף -->
         <ImageView
             android:id="@+id/ivAttachment"
             android:layout_width="24dp"
@@ -73,7 +68,6 @@
             android:visibility="gone"
             android:layout_marginBottom="8dp"/>
 
-        <!-- תאריך -->
         <TextView
             android:id="@+id/tvDate"
             android:text="10:32"

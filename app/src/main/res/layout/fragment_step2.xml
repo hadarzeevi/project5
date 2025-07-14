@@ -18,7 +18,6 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal">
 
-            <!-- לוגו -->
             <ImageView
                 android:layout_width="150dp"
                 android:layout_height="wrap_content"
@@ -26,7 +25,6 @@
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="16dp" />
 
-            <!-- כותרת -->
             <TextView
                 android:text="@string/just_a_few_more_details"
                 android:textSize="20sp"
@@ -37,7 +35,6 @@
                 android:layout_width="wrap_content"
                 android:layout_gravity="center_horizontal" />
 
-            <!-- שדה תאריך -->
             <EditText
                 android:id="@+id/etBirthDate"
                 android:hint="@string/birth_date"
@@ -45,7 +42,6 @@
                 android:layout_height="wrap_content"
                 android:inputType="date" />
 
-            <!-- מין -->
             <Spinner
                 android:id="@+id/spinnerGender"
                 android:layout_width="match_parent"
@@ -53,7 +49,6 @@
                 android:entries="@array/gender_array"
                 android:layout_marginTop="12dp" />
 
-            <!-- שגיאה -->
             <TextView
                 android:id="@+id/tvError"
                 android:layout_width="match_parent"
@@ -63,7 +58,6 @@
                 android:paddingTop="8dp"
                 android:textSize="14sp" />
 
-            <!-- כפתורים -->
             <Button
                 android:id="@+id/btnNext"
                 android:text="@string/next"

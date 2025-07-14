@@ -104,7 +104,7 @@ public class MailListFragment extends Fragment {
                                 String deletedId = data.getStringExtra("deletedMailId");
                                 removeMailFromList(deletedId);
                             }
-                            // טיפול במייל שהועבר מספאם או אליו
+                            // dealing with spam mails
                             if (data.hasExtra("mailMovedFromSpam")) {
                                 String movedMailId = data.getStringExtra("mailMovedFromSpam");
                                 handleMailMovedFromSpam(movedMailId);
@@ -157,15 +157,13 @@ public class MailListFragment extends Fragment {
                     JSONObject obj = jsonArray.getJSONObject(i);
                     Mail mail = Mail.fromJson(obj);
 
-                    // בדיקת ספאם (בלי לשנות את הקטגוריה)
                     boolean isSpamByContent = checkIfSpam(mail.subject, mail.body);
                     boolean hasBlacklistedLinks = SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body);
 
-                    // אם המייל כבר סומן כ-spam מהשרת, נוודא שהקישורים שלו ברשימה השחורה
+                    // if a mail is in the spam, make sure his urls are in the blacklist
                     if ("spam".equalsIgnoreCase(mail.category) && hasBlacklistedLinks) {
                         List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
                         SpamUtils.addLinksToBlacklist(getContext(), links);
-                        Log.d("loadMails", "הוספנו קישורים ל-blacklist עבור מייל שכבר היה ב-spam");
                     }
 
                     allMails.add(mail);
@@ -191,8 +189,6 @@ public class MailListFragment extends Fragment {
             }
         }).start();
     }
-
-
     private boolean checkIfSpam(String subject, String body) {
         try {
             URL url = new URL(CHECK_SPAM_URL);
@@ -229,10 +225,6 @@ public class MailListFragment extends Fragment {
             return false;
         }
     }
-
-    /**
-     * טיפול במייל שהועבר מספאם - הסרת הקישורים מהblacklist
-     */
     private void handleMailMovedFromSpam(String mailId) {
         Mail mail = findMailById(mailId);
         if (mail != null) {
@@ -244,23 +236,16 @@ public class MailListFragment extends Fragment {
         }
     }
 
-    /**
-     * טיפול במייל שהועבר לספאם - הוספת הקישורים לblacklist
-     */
     private void handleMailMovedToSpam(String mailId) {
         Mail mail = findMailById(mailId);
         if (mail != null) {
             List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
             if (!links.isEmpty()) {
                 SpamUtils.addLinksToBlacklist(getContext(), links);
-                Log.d("MailListFragment", "Added " + links.size() + " links to blacklist for mail: " + mailId);
             }
         }
     }
 
-    /**
-     * מציאת מייל לפי ID
-     */
     private Mail findMailById(String mailId) {
         for (Mail mail : allMails) {
             if (mail.id.equals(mailId)) {

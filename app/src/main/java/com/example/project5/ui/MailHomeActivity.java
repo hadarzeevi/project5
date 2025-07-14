@@ -29,20 +29,18 @@ public class MailHomeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mail_home);
 
-        Log.d("DEBUG", "MailHomeActivity started");
-
-        // טען את רשימת המיילים למסך הראשי
+        // load mail list
         mailListFragment = new MailListFragment();
         loadFragment(R.id.mailContentContainer, mailListFragment);
 
-        // כפתור כתיבת מייל
+        // compose btn
         Button btnCompose = findViewById(R.id.btnComposeFloating);
         btnCompose.setOnClickListener(v -> {
             Intent intent = new Intent(MailHomeActivity.this, ComposeActivity.class);
             startActivity(intent);
         });
 
-        // טעינת תמונת פרופיל
+        // load profile pics
         ImageView ivAvatar = findViewById(R.id.ivAvatar);
         EditText etSearch = findViewById(R.id.etSearch);
         etSearch.addTextChangedListener(new TextWatcher() {
@@ -59,7 +57,7 @@ public class MailHomeActivity extends AppCompatActivity {
 
         loadUserProfileImage(ivAvatar);
 
-        // פתיחת תפריט פרופיל בלחיצה על תמונת הפרופיל
+        // open profile menu
         ivAvatar.setOnClickListener(v -> {
             String username = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("username", "User");
             String email = getSharedPreferences("MyAppPrefs", MODE_PRIVATE).getString("mail", "user@example.com");
@@ -70,20 +68,14 @@ public class MailHomeActivity extends AppCompatActivity {
             bottomSheet.show(getSupportFragmentManager(), "userMenu");
         });
 
-        // תפריט צד (המבורגר)
         ImageView ivMenu = findViewById(R.id.ivMenu);
         FrameLayout sidebar = findViewById(R.id.sidebar);
         View sidebarOverlay = findViewById(R.id.sidebarOverlay);
 
         ivMenu.setOnClickListener(v -> toggleSidebar(sidebar, sidebarOverlay));
         sidebarOverlay.setOnClickListener(v -> closeSidebar(sidebar, sidebarOverlay));
-
-        Log.d("DEBUG", "MailHomeActivity ready");
     }
 
-    /**
-     * טוען את תמונת הפרופיל מה-SharedPreferences או תמונת ברירת מחדל
-     */
     private void loadUserProfileImage(ImageView ivAvatar) {
         String userProfileImage = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
                 .getString("profileImage", null);
@@ -101,18 +93,12 @@ public class MailHomeActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * טוען פרגמנט למיקום שנבחר במסך
-     */
     private void loadFragment(int containerId, Fragment fragment) {
         getSupportFragmentManager().beginTransaction()
                 .replace(containerId, fragment)
                 .commit();
     }
 
-    /**
-     * פתיחה/סגירת תפריט צד
-     */
     private void toggleSidebar(FrameLayout sidebar, View sidebarOverlay) {
         if (sidebar.getVisibility() == View.GONE) {
             sidebar.setVisibility(View.VISIBLE);
@@ -123,17 +109,11 @@ public class MailHomeActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * סגירת תפריט צד
-     */
     private void closeSidebar(FrameLayout sidebar, View sidebarOverlay) {
         sidebar.setVisibility(View.GONE);
         sidebarOverlay.setVisibility(View.GONE);
     }
 
-    /**
-     * החלפת מצב כהה (לשימוש עתידי)
-     */
     private void toggleDarkMode() {
         isDarkMode = !isDarkMode;
         recreate();

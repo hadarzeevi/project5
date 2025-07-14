@@ -65,23 +65,16 @@ public class AttachmentAdapter extends RecyclerView.Adapter<AttachmentAdapter.At
         }
 
         public void bind(Attachment attachment) {
-            Log.d("AttachmentAdapter", "Binding attachment: " + attachment.toString());
-
-            // הצגת שם הקובץ
+            //name
             String displayName = attachment.filename;
             if (displayName == null || displayName.isEmpty()) {
                 displayName = attachment.path != null ? attachment.path : "קובץ מצורף";
             }
             tvFileName.setText(displayName);
-
-            // הצגת גודל הקובץ
+            // size
             tvFileSize.setText(formatFileSize(attachment.size));
-
-            // הגדרת אייקון לפי סוג קובץ
             setFileIcon(attachment);
 
-            Log.d("AttachmentAdapter", "Bound attachment with name: " + displayName +
-                    ", size: " + formatFileSize(attachment.size));
         }
 
         private void setFileIcon(Attachment attachment) {
@@ -100,7 +93,6 @@ public class AttachmentAdapter extends RecyclerView.Adapter<AttachmentAdapter.At
                     ivFileIcon.setImageResource(android.R.drawable.ic_menu_info_details);
                 }
             } else {
-                // אם אין contentType, נסה לנחש לפי סיומת הקובץ
                 String filename = attachment.filename != null ? attachment.filename : attachment.path;
                 if (filename != null) {
                     String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();

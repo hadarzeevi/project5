@@ -74,11 +74,10 @@ public class UserMenuBottomSheet extends BottomSheetDialogFragment {
             profileImageUrl = getArguments().getString("profileImageUrl", null);
         }
 
-        // קישור רכיבים
         layoutProfileView = view.findViewById(R.id.layoutProfileView);
         layoutEditProfile = view.findViewById(R.id.layoutEditProfile);
 
-        // תצוגת פרופיל
+        // show profile
         ImageView ivProfile = view.findViewById(R.id.ivProfile);
         TextView tvUsername = view.findViewById(R.id.tvUsername);
         TextView tvEmail = view.findViewById(R.id.tvEmail);
@@ -98,12 +97,12 @@ public class UserMenuBottomSheet extends BottomSheetDialogFragment {
             ivProfile.setImageResource(R.drawable.ic_avatar);
         }
 
-        // מעבר לעריכת פרופיל
+        // edit profile
         btnEditProfile.setOnClickListener(v -> {
             layoutProfileView.setVisibility(View.GONE);
             layoutEditProfile.setVisibility(View.VISIBLE);
 
-            // טען נתונים קיימים
+            // load details
             SharedPreferences prefs = requireActivity().getSharedPreferences("MyAppPrefs", getContext().MODE_PRIVATE);
 
             ((EditText) view.findViewById(R.id.etFirstName)).setText(prefs.getString("first_name", ""));
@@ -126,7 +125,7 @@ public class UserMenuBottomSheet extends BottomSheetDialogFragment {
             }
         });
 
-        // התנתקות
+        // logout
         btnLogout.setOnClickListener(v -> {
             requireActivity().getSharedPreferences("MyAppPrefs", getContext().MODE_PRIVATE)
                     .edit()
@@ -136,7 +135,7 @@ public class UserMenuBottomSheet extends BottomSheetDialogFragment {
             requireActivity().finish();
         });
 
-        // שמירה
+        // save
         Button btnSaveEdit = view.findViewById(R.id.btnSaveEdit);
         btnSaveEdit.setOnClickListener(v -> {
             SharedPreferences.Editor editor = requireActivity()
@@ -162,7 +161,7 @@ public class UserMenuBottomSheet extends BottomSheetDialogFragment {
             layoutProfileView.setVisibility(View.VISIBLE);
         });
 
-        // ביטול
+        // cancel
         Button btnCancelEdit = view.findViewById(R.id.btnCancelEdit);
         btnCancelEdit.setOnClickListener(v -> {
             layoutEditProfile.setVisibility(View.GONE);

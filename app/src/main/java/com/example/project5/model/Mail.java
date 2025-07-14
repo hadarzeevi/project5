@@ -22,7 +22,6 @@ public class Mail {
     public boolean hasAttachment;
     public String sendTo;
 
-    // נתוני השולח
     public String firstName;
     public String lastName;
     public String mail;
@@ -50,7 +49,7 @@ public class Mail {
         mail.category = obj.optString("category", "inbox");
         mail.sendTo = obj.optString("sendTo", "");
 
-        // תוויות
+        // labels
         if (obj.has("label") && !obj.isNull("label")) {
             JSONArray labelsArray = obj.getJSONArray("label");
             for (int i = 0; i < labelsArray.length(); i++) {
@@ -61,7 +60,6 @@ public class Mail {
             }
         }
 
-        // נתוני השולח כאובייקט (אם קיימים)
         if (obj.has("from") && obj.opt("from") instanceof JSONObject) {
             JSONObject sender = obj.getJSONObject("from");
             mail.firstName = sender.optString("first_name", "");
@@ -70,7 +68,7 @@ public class Mail {
             mail.profileImage = sender.optString("profileImage", "");
         }
 
-        // מצורפים
+        // attach
         if (obj.has("attachments") && !obj.isNull("attachments")) {
             JSONArray attachmentsArray = obj.getJSONArray("attachments");
             mail.attachments = new ArrayList<>();
@@ -125,7 +123,7 @@ public class Mail {
             sender.put("profileImage", profileImage);
             obj.put("sender", sender);
 
-            // מצורפים
+            // attach
             JSONArray attachmentsArray = new JSONArray();
             for (Attachment att : attachments) {
                 JSONObject attObj = new JSONObject();
@@ -143,20 +141,4 @@ public class Mail {
         return obj;
     }
 
-    // פונקציית דיבוג
-    public void debugPrint() {
-        Log.d("Mail", "=== Mail Debug Info ===");
-        Log.d("Mail", "ID: " + id);
-        Log.d("Mail", "Subject: " + subject);
-        Log.d("Mail", "From: " + fromMail);
-        Log.d("Mail", "Category: " + category);
-        Log.d("Mail", "Attachments count: " + (attachments != null ? attachments.size() : 0));
-        if (attachments != null) {
-            for (int i = 0; i < attachments.size(); i++) {
-                Attachment att = attachments.get(i);
-                Log.d("Mail", "Attachment " + i + ": " + att.filename + " (" + att.size + " bytes)");
-            }
-        }
-        Log.d("Mail", "=====================");
-    }
 }

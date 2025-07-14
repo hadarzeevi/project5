@@ -27,14 +27,12 @@ public class SpamUtils {
     private static final String LINK_BLACKLIST_KEY = "link_blacklist";
     private static final String API_BASE_URL = "http://10.0.2.2:4000/api";
 
-    // Pattern לזיהוי קישורים
+    // Pattern to recognize url
     private static final Pattern URL_PATTERN = Pattern.compile(
             "(?i)\\b(?:https?://|www\\.)[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]"
     );
 
-    /**
-     * הוספת אימייל לרשימה השחורה
-     */
+    // add mail to blacklist
     public static void addToBlacklist(Context context, String email) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> blacklist = prefs.getStringSet(BLACKLIST_KEY, new HashSet<>());
@@ -43,9 +41,7 @@ public class SpamUtils {
         Log.d(TAG, "Added email to blacklist: " + email);
     }
 
-    /**
-     * הסרת אימייל מהרשימה השחורה
-     */
+    // remove
     public static void removeFromBlacklist(Context context, String email) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> blacklist = prefs.getStringSet(BLACKLIST_KEY, new HashSet<>());
@@ -54,18 +50,14 @@ public class SpamUtils {
         Log.d(TAG, "Removed email from blacklist: " + email);
     }
 
-    /**
-     * בדיקה אם אימייל נמצא ברשימה השחורה
-     */
+    // check if mail is blacklisted
     public static boolean isEmailBlacklisted(Context context, String email) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> blacklist = prefs.getStringSet(BLACKLIST_KEY, new HashSet<>());
         return blacklist.contains(email.toLowerCase());
     }
 
-    /**
-     * חילוץ קישורים מטקסט
-     */
+    // extract urls
     public static List<String> extractLinksFromText(String text) {
         List<String> links = new ArrayList<>();
         if (text == null || text.trim().isEmpty()) {
@@ -84,9 +76,7 @@ public class SpamUtils {
         return links;
     }
 
-    /**
-     * הוספת קישורים לרשימה השחורה
-     */
+    // add url
     public static void addLinksToBlacklist(Context context, List<String> links) {
         if (links == null || links.isEmpty()) {
             return;
@@ -103,9 +93,7 @@ public class SpamUtils {
         Log.d(TAG, "Added " + links.size() + " links to blacklist");
     }
 
-    /**
-     * הסרת קישורים מהרשימה השחורה
-     */
+    // remove url
     public static void removeLinksFromBlacklist(Context context, List<String> links) {
         if (links == null || links.isEmpty()) {
             return;
@@ -122,18 +110,14 @@ public class SpamUtils {
         Log.d(TAG, "Removed " + links.size() + " links from blacklist");
     }
 
-    /**
-     * בדיקה אם קישור נמצא ברשימה השחורה
-     */
+    // check if url is in the blacklist
     public static boolean isLinkBlacklisted(Context context, String link) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> linkBlacklist = prefs.getStringSet(LINK_BLACKLIST_KEY, new HashSet<>());
         return linkBlacklist.contains(link.toLowerCase());
     }
 
-    /**
-     * בדיקה אם מייל מכיל קישורים מהרשימה השחורה
-     */
+    // check if mail contain a url blacklisted
     public static boolean containsBlacklistedLinks(Context context, String subject, String body) {
         String fullText = (subject != null ? subject : "") + " " + (body != null ? body : "");
         List<String> links = extractLinksFromText(fullText);
@@ -147,17 +131,13 @@ public class SpamUtils {
         return false;
     }
 
-    /**
-     * בדיקה מקיפה אם מייל הוא ספאם
-     */
+    // is spam?
     public static boolean isSpamMail(Context context, String senderEmail, String subject, String body) {
-        // בדיקת אימייל ברשימה השחורה
         if (isEmailBlacklisted(context, senderEmail)) {
             Log.d(TAG, "Mail is spam - sender in blacklist: " + senderEmail);
             return true;
         }
 
-        // בדיקת קישורים ברשימה השחורה
         if (containsBlacklistedLinks(context, subject, body)) {
             Log.d(TAG, "Mail is spam - contains blacklisted links");
             return true;
@@ -166,49 +146,35 @@ public class SpamUtils {
         return false;
     }
 
-    /**
-     * סימון מייל כספאם והוספת קישורים לרשימה השחורה
-     */
+    // mark as spam
     public static void markMailAsSpam(Context context, String mailId, String senderEmail, String subject, String body) {
-        // הוספת השולח לרשימה השחורה
         if (senderEmail != null && !senderEmail.isEmpty()) {
             addToBlacklist(context, senderEmail);
         }
 
-        // חילוץ והוספת קישורים לרשימה השחורה
         String fullText = (subject != null ? subject : "") + " " + (body != null ? body : "");
         List<String> links = extractLinksFromText(fullText);
         if (!links.isEmpty()) {
             addLinksToBlacklist(context, links);
         }
-
-        // עדכון קטגוריית המייל לספאם בשרת
         updateMailCategoryOnServer(context, mailId, "spam");
     }
 
-    /**
-     * הסרת מייל מספאם והסרת קישורים מהרשימה השחורה
-     */
+    // remove
     public static void removeMailFromSpam(Context context, String mailId, String senderEmail, String subject, String body, String newCategory) {
-        // הסרת השולח מהרשימה השחורה (אופציונלי)
         if (senderEmail != null && !senderEmail.isEmpty()) {
             removeFromBlacklist(context, senderEmail);
         }
-
-        // חילוץ והסרת קישורים מהרשימה השחורה
         String fullText = (subject != null ? subject : "") + " " + (body != null ? body : "");
         List<String> links = extractLinksFromText(fullText);
         if (!links.isEmpty()) {
             removeLinksFromBlacklist(context, links);
         }
 
-        // עדכון קטגוריית המייל בשרת
         updateMailCategoryOnServer(context, mailId, newCategory);
     }
 
-    /**
-     * עדכון קטגוריית מייל בשרת
-     */
+    // update
     private static void updateMailCategoryOnServer(Context context, String mailId, String category) {
         new Thread(() -> {
             try {
@@ -259,11 +225,6 @@ public class SpamUtils {
         }).start();
     }
 
-
-
-    /**
-     * בדיקת ספאם מול השרת (אופציונלי)
-     */
     public static void checkSpamWithServer(Context context, String subject, String body, SpamCheckCallback callback) {
         new Thread(() -> {
             try {
@@ -309,37 +270,17 @@ public class SpamUtils {
         }).start();
     }
 
-    /**
-     * קבלת כל הקישורים ברשימה השחורה
-     */
     public static Set<String> getBlacklistedLinks(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getStringSet(LINK_BLACKLIST_KEY, new HashSet<>());
     }
 
-    /**
-     * קבלת כל האימיילים ברשימה השחורה
-     */
+
     public static Set<String> getBlacklistedEmails(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getStringSet(BLACKLIST_KEY, new HashSet<>());
     }
 
-    /**
-     * ניקוי רשימות שחורות
-     */
-    public static void clearBlacklists(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit()
-                .remove(BLACKLIST_KEY)
-                .remove(LINK_BLACKLIST_KEY)
-                .apply();
-        Log.d(TAG, "Cleared all blacklists");
-    }
-
-    /**
-     * Interface לקבלת תוצאות בדיקת ספאם
-     */
     public interface SpamCheckCallback {
         void onResult(boolean isSpam);
     }

@@ -18,7 +18,6 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal">
 
-            <!-- לוגו -->
             <ImageView
                 android:layout_width="150dp"
                 android:layout_height="wrap_content"
@@ -26,7 +25,6 @@
                 android:layout_marginBottom="16dp"
                 android:contentDescription="@string/google_logo" />
 
-            <!-- שדה אימייל -->
             <EditText
                 android:id="@+id/etEmail"
                 android:hint="Email"
@@ -34,7 +32,6 @@
                 android:layout_height="wrap_content"
                 android:inputType="textEmailAddress" />
 
-            <!-- שדה סיסמה -->
             <EditText
                 android:id="@+id/etPassword"
                 android:hint="Password"
@@ -42,7 +39,6 @@
                 android:layout_height="wrap_content"
                 android:inputType="textPassword" />
 
-            <!-- אישור סיסמה -->
             <EditText
                 android:id="@+id/etConfirmPassword"
                 android:hint="Confirm Password"
@@ -50,14 +46,12 @@
                 android:layout_height="wrap_content"
                 android:inputType="textPassword" />
 
-            <!-- טקסט העלאת תמונה -->
             <TextView
                 android:text="Upload profile image (optional)"
                 android:layout_marginTop="12dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
-            <!-- כפתור העלאה -->
             <Button
                 android:id="@+id/btnUploadImage"
                 android:text="Choose Image"
@@ -74,7 +68,6 @@
                 android:paddingTop="8dp"
                 android:textSize="14sp" />
 
-            <!-- תצוגה מקדימה -->
             <ImageView
                 android:id="@+id/ivProfile"
                 android:layout_width="100dp"
@@ -83,7 +76,6 @@
                 android:scaleType="centerCrop"
                 android:visibility="gone" />
 
-            <!-- כפתור הרשמה -->
             <Button
                 android:id="@+id/btnRegister"
                 android:text="Register"
@@ -93,7 +85,6 @@
                 android:backgroundTint="#1A73E8"
                 android:textColor="#FFFFFF" />
 
-            <!-- כפתור חזרה -->
             <Button
                 android:id="@+id/btnBack"
                 android:text="Back"

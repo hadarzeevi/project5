@@ -57,7 +57,7 @@ public class Step2Fragment extends Fragment {
                 getResources().getStringArray(R.array.gender_array));
         spinnerGender.setAdapter(genderAdapter);
 
-        // טעינת ערכים קיימים במידה וחזרנו אחורה
+        // in case we press back, load the details
         if (parentActivity.birthDate != null) etBirthDate.setText(parentActivity.birthDate);
         if (parentActivity.gender != null) {
             int spinnerPos = genderAdapter.getPosition(parentActivity.gender);

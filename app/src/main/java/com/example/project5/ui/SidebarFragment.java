@@ -193,14 +193,13 @@ public class SidebarFragment extends Fragment {
     private void addLabelToUI(String label, String colorName) {
         Context context = getContext();
 
-        // מכולה של כל השורה (כולל טקסט + אייקון)
         LinearLayout labelItem = new LinearLayout(context);
         labelItem.setOrientation(LinearLayout.HORIZONTAL);
         labelItem.setPadding(16, 16, 16, 16);
         labelItem.setGravity(Gravity.CENTER_VERTICAL);
         labelItem.setBackground(createRoundedBackground(Color.TRANSPARENT)); // ברירת מחדל – שקוף
 
-        // טקסט של התווית
+        // label name
         TextView tv = new TextView(context);
         tv.setText(label);
         tv.setTextSize(15);
@@ -208,7 +207,7 @@ public class SidebarFragment extends Fragment {
         tv.setPadding(36, 20, 36, 20);
         tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
 
-        // פח
+        // trash
         ImageView deleteIcon = new ImageView(context);
         deleteIcon.setImageResource(R.drawable.ic_delete); // ודאי שזה אייקון קטן עם רקע שקוף
         deleteIcon.setPadding(20, 20, 20, 20);
@@ -218,7 +217,6 @@ public class SidebarFragment extends Fragment {
             int baseColor = Color.parseColor(colorName);
             int lightColor = lightenColor(baseColor, 0.8f);
 
-            // שמירה בתור תגיות לשימוש מאוחר
             labelItem.setTag(R.id.label_bg_color, lightColor);
             labelItem.setTag(R.id.label_text_color, baseColor);
 
@@ -227,9 +225,8 @@ public class SidebarFragment extends Fragment {
             tv.setTextColor(Color.BLACK);
         }
 
-        // בעת לחיצה על תווית
+
         tv.setOnClickListener(v -> {
-            // אפס תווית קודמת
             if (selectedCategoryView != null && selectedCategoryView instanceof LinearLayout) {
                 LinearLayout prevItem = (LinearLayout) selectedCategoryView;
                 prevItem.setBackground(createRoundedBackground(Color.TRANSPARENT));
@@ -242,7 +239,6 @@ public class SidebarFragment extends Fragment {
                 prevTrash.setVisibility(View.GONE);
             }
 
-            // עדכן עיצוב חדש
             Integer bgColor = (Integer) labelItem.getTag(R.id.label_bg_color);
             if (bgColor != null) {
                 labelItem.setBackground(createRoundedBackground(bgColor));
@@ -259,7 +255,6 @@ public class SidebarFragment extends Fragment {
             deleteIcon.setVisibility(View.VISIBLE);
             selectedCategoryView = labelItem;
 
-            // שליחה לרשימת מיילים
             MailHomeActivity activity = (MailHomeActivity) requireActivity();
             MailListFragment listFragment = activity.getMailListFragment();
             if (listFragment != null) {
@@ -269,7 +264,6 @@ public class SidebarFragment extends Fragment {
             Toast.makeText(context, "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
         });
 
-        // כשלוחצים על פח
         deleteIcon.setOnClickListener(v -> {
             labelsContainer.removeView(labelItem);
             userLabels.remove(label);
@@ -290,77 +284,10 @@ public class SidebarFragment extends Fragment {
     }
     private Drawable createRoundedBackground(int color) {
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(0); // בלי עיגול בכלל
+        bg.setCornerRadius(0);
         bg.setColor(color);
         return bg;
     }
-
-//    private void addLabelToUI(String label, String colorName) {
-//        Context context = getContext();
-//        LinearLayout labelItem = new LinearLayout(context);
-//        labelItem.setOrientation(LinearLayout.HORIZONTAL);
-//        labelItem.setPadding(24, 24, 24, 24);
-//
-//        ImageView deleteIcon = new ImageView(context);
-//        deleteIcon.setImageResource(R.drawable.ic_delete);
-//        deleteIcon.setPadding(16, 16, 16, 16);
-//        deleteIcon.setVisibility(View.GONE);
-//
-//        TextView tv = new TextView(context);
-//        tv.setText(label);
-//        tv.setTextSize(16);
-//        tv.setTextColor(ContextCompat.getColor(context, R.color.grayDark));
-//        tv.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-//        tv.setBackgroundColor(Color.TRANSPARENT);
-//
-//        tv.setOnClickListener(v -> {
-//            // איפוס תווית קודמת
-//            if (selectedCategoryView != null) {
-//                TextView prev = (TextView) selectedCategoryView;
-//                prev.setTypeface(null, Typeface.NORMAL);
-//                prev.setBackgroundColor(Color.TRANSPARENT);
-//
-//                View parent = (View) selectedCategoryView.getParent();
-//                if (parent instanceof LinearLayout) {
-//                    ImageView prevDeleteIcon = (ImageView) ((LinearLayout) parent).getChildAt(1);
-//                    if (prevDeleteIcon != null) prevDeleteIcon.setVisibility(View.GONE);
-//                }
-//            }
-//
-//            // סימון נוכחי
-//            int brightColor = lightenColor(Color.parseColor(colorName), 0.6f);
-//            tv.setBackgroundColor(brightColor);
-//            tv.setTypeface(null, Typeface.BOLD);
-//            selectedCategoryView = tv;
-//            deleteIcon.setVisibility(View.VISIBLE);
-//
-//            MailHomeActivity activity = (MailHomeActivity) requireActivity();
-//            MailListFragment listFragment = activity.getMailListFragment();
-//            if (listFragment != null) {
-//                listFragment.setLabel(label);
-//            }
-//
-//            Toast.makeText(context, "Label: " + label + " selected", Toast.LENGTH_SHORT).show();
-//        });
-//
-//        deleteIcon.setOnClickListener(v -> {
-//            labelsContainer.removeView(labelItem);
-//            userLabels.remove(label);
-//            saveLabelsToPrefs();
-//
-//            LabelInfo info = labelInfoMap.get(label);
-//            String labelId = info != null ? info.id : null;
-//            if (labelId != null) {
-//                deleteLabelFromServerById(labelId);
-//            }
-//
-//            Toast.makeText(context, "נמחקה תווית: " + label, Toast.LENGTH_SHORT).show();
-//        });
-//
-//        labelItem.addView(tv);
-//        labelItem.addView(deleteIcon);
-//        labelsContainer.addView(labelItem);
-//    }
 
     private int lightenColor(int color, float factor) {
         int r = Math.min(255, (int) (Color.red(color) + (255 - Color.red(color)) * factor));

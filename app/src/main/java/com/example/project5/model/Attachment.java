@@ -12,21 +12,12 @@ public class Attachment {
         public String contentType;
         public long size;
         public String path;
-        public String data; // עבור base64 encoded data
+        public String data; //  base64
 
         public Attachment() {
-            // בנאי ריק
+            // empty constructor
         }
 
-//        // בנאי עם פרמטרים
-//        public Attachment(String filename, String contentType, long size, String path) {
-//            this.filename = filename != null ? filename : "";
-//            this.contentType = contentType != null ? contentType : "";
-//            this.size = size;
-//            this.path = path != null ? path : "";
-//        }
-
-        // מתודות עזר
         public boolean isValid() {
             return filename != null && !filename.isEmpty();
         }

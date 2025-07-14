@@ -52,7 +52,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp" />
 
-    <!-- ✅ הוספת TextView לשגיאות -->
     <TextView
         android:id="@+id/tvError"
         android:layout_width="wrap_content"

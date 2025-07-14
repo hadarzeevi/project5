@@ -51,7 +51,6 @@ public class EditProfileBottomSheet extends BottomSheetDialogFragment {
         btnSave = view.findViewById(R.id.btnSave);
         btnCancel = view.findViewById(R.id.btnCancel);
 
-        // הגדר spinner מגדר
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
                 R.array.gender_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -74,7 +73,7 @@ public class EditProfileBottomSheet extends BottomSheetDialogFragment {
                     c.get(Calendar.DAY_OF_MONTH)).show();
         });
 
-        // טעינת פרטי המשתמש מהזיכרון להצגה
+        // load details
         SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
         String profileImage = prefs.getString("profileImage", null);
         if (!TextUtils.isEmpty(profileImage)) {

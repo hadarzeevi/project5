@@ -73,8 +73,6 @@ public class ComposeActivity extends Activity {
         tvAttachmentName = findViewById(R.id.tvAttachmentName);
         btnRemoveAttachment = findViewById(R.id.btnRemoveAttachment);
 
-        // תמיכה במענה למייל
-
         Intent intent = getIntent();
         if (intent != null) {
             draftId = intent.getStringExtra("draftId");
@@ -115,7 +113,7 @@ public class ComposeActivity extends Activity {
 
         btnClear.setOnClickListener(goHome);
         btnClose.setOnClickListener(v -> {
-            saveAsDraft();  // קודם שומר טיוטה
+            saveAsDraft();  // save draft first
 
         });
     }
@@ -141,15 +139,12 @@ public class ComposeActivity extends Activity {
         String subject = etSubject.getText().toString().trim();
         String body = etBody.getText().toString().trim();
 
-        Log.d("SEND_MAIL", "Trying to send mail to: " + to + ", subject: " + subject);
-
         if (to.isEmpty() || subject.isEmpty()) {
             Toast.makeText(this, "נא למלא כתובת ונושא", Toast.LENGTH_SHORT).show();
             return;
         }
 
         boolean isSpam = SpamUtils.isEmailBlacklisted(this, to);
-        Log.d("SEND_MAIL", "isSpam? " + isSpam);
 
         MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("sendTo", to)
@@ -160,8 +155,6 @@ public class ComposeActivity extends Activity {
         if (selectedFileUri != null) {
             String fileName = getFileName(selectedFileUri);
             String mimeType = getContentResolver().getType(selectedFileUri);
-
-            Log.d("SEND_MAIL", "File selected: " + fileName + " | MIME type: " + mimeType);
 
             if (mimeType == null) {
                 mimeType = "application/octet-stream";
@@ -297,7 +290,6 @@ public class ComposeActivity extends Activity {
         String subject = etSubject.getText().toString().trim();
         String body = etBody.getText().toString().trim();
 
-        // 🛑 אם הכל ריק – אין מה לשמור
         if (to.isEmpty() && subject.isEmpty() && body.isEmpty()) {
             finish();
             return;
@@ -318,28 +310,24 @@ public class ComposeActivity extends Activity {
             return;
         }
 
-        // בוחרים URL ו־method לפי האם זו טיוטה חדשה או קיימת
         String url;
         Request.Builder requestBuilder;
 
         if (draftId != null && !draftId.isEmpty()) {
-            // טיוטה קיימת → נבצע PATCH
             url = "http://10.0.2.2:4000/api/mails/" + draftId;
             requestBuilder = new Request.Builder()
                     .url(url)
                     .patch(RequestBody.create(json.toString(), MediaType.get("application/json")));
         } else {
-            // טיוטה חדשה → POST
             url = "http://10.0.2.2:4000/api/mails";
             requestBuilder = new Request.Builder()
                     .url(url)
                     .post(RequestBody.create(json.toString(), MediaType.get("application/json")));
         }
 
-        // הוספת טוקן
+        // tokn
         requestBuilder.addHeader("Authorization", "Bearer " + token);
 
-        // שליחה
         client.newCall(requestBuilder.build()).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
