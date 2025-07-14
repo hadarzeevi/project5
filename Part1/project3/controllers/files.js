@@ -47,6 +47,15 @@ const sendMail = async (req, res) => {
     if (!subject || !body)
       return res.status(400).json({ error: 'Missing subject or body' });
 
+ const formattedAttachments = attachments.map(f => ({
+  filename: f.filename,
+  originalName: f.originalname,
+  size: f.size,
+  contentType: f.mimetype, 
+  path: f.path
+}));
+
+
     const base = {
       from      : sender._id,
       fromMail  : sender.mail,
@@ -58,13 +67,7 @@ const sendMail = async (req, res) => {
       isRead    : false,
       spam      : false,
       timestamp : new Date(),
-      attachments: attachments.map(f => ({
-        originalName: f.originalname,
-        filename    : f.filename,
-        path        : f.path,
-        size        : f.size,
-        mimetype    : f.mimetype
-      }))
+      attachments: formattedAttachments  // 🔧 משתמש בפורמט המתוקן
     };
 
     const inboxMail = new Mail({ ...base, ownerId: recipient._id, category: 'inbox' });
@@ -78,7 +81,7 @@ const sendMail = async (req, res) => {
       sentId  : sentMail._id,
       attachments: attachments.length
     });
-
+   
   } catch (err) {
     console.error('sendMail error:', err);
     res.status(500).json({ error: 'Internal server error' });

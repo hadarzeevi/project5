@@ -67,12 +67,23 @@ const emailSchema = new mongoose.Schema({
   link: {
     type: String,
     default: ''
+  },
+
+  attachments: {
+    type: [{
+      filename:     { type: String, required: true },
+      originalName: { type: String, required: true },
+      size:         { type: Number, required: true },
+      contentType:     { type: String, required: true },
+      path:         { type: String, required: true }
+    }],
+    default: []
   }
+
 }, {
   timestamps: true
 });
 
-// indexes for efficient querying
 emailSchema.index({ ownerId: 1, timestamp: -1 });
 emailSchema.index({ from: 1, to: 1 });
 emailSchema.index({ category: 1 });
