@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 import '../styles/UserProfileModal.css';
+
 const UserProfileModal = ({ onClose, darkMode, userInfo, onUserUpdate }) => {
   const [formData, setFormData] = useState({
     first_name: '',
@@ -16,27 +17,26 @@ const UserProfileModal = ({ onClose, darkMode, userInfo, onUserUpdate }) => {
   const [success, setSuccess] = useState('');
   const [imagePreview, setImagePreview] = useState(userInfo.avatar || null);
 
-useEffect(() => {
-  if (userInfo) {
-    const fixedAvatarUrl = userInfo.avatar
-      ? `http://localhost:4000/${userInfo.avatar.replace(/\\/g, '/')}`
-      : null;
+  useEffect(() => {
+    if (userInfo) {
+      const fixedAvatarUrl = userInfo.avatar
+        ? `http://localhost:4000/${userInfo.avatar.replace(/\\/g, '/')}`
+        : null;
 
-    // if the picture is not set, use a default picture
-    setImagePreview(prev => prev || fixedAvatarUrl);
+      setImagePreview(prev => prev || fixedAvatarUrl);
 
-    const nameParts = userInfo.name.split(' ');
-    setFormData({
-      first_name: nameParts[0] || '',
-      last_name: nameParts.slice(1).join(' ') || '',
-      username: userInfo.username || '',
-      mail: userInfo.mail || '',
-      birth_date: userInfo.birthDate ? userInfo.birthDate.split('T')[0] : '',
-      gender: userInfo.gender || '',
-      profileImage: null
-    });
-  }
-}, [userInfo]);
+      const nameParts = userInfo.name.split(' ');
+      setFormData({
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        username: userInfo.username || '',
+        mail: userInfo.mail || '',
+        birth_date: userInfo.birthDate ? userInfo.birthDate.split('T')[0] : '',
+        gender: userInfo.gender || '',
+        profileImage: null
+      });
+    }
+  }, [userInfo]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -46,7 +46,6 @@ useEffect(() => {
     }));
   };
 
-  // Handle image change
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -54,8 +53,7 @@ useEffect(() => {
         ...prev,
         profileImage: file
       }));
-      
-      // Create preview
+
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target.result);
@@ -72,10 +70,10 @@ useEffect(() => {
 
     try {
       const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId");
+      const userId = localStorage.getItem("userId"); // כאן userId = _id של MongoDB
       
       if (!token || !userId) {
-        throw new Error("No eccess permission");
+        throw new Error("No access permission");
       }
 
       const formDataToSend = new FormData();
@@ -102,9 +100,8 @@ useEffect(() => {
       }
 
       const updatedUser = await res.json();
-      setSuccess('Profile update successfully!');
-      
-      // Update parent component
+      setSuccess('Profile updated successfully!');
+
       if (onUserUpdate) {
         onUserUpdate({
           name: `${formData.first_name} ${formData.last_name}`,
@@ -137,12 +134,10 @@ useEffect(() => {
           <h2>Edit profile</h2>
           <button onClick={onClose} className="close-btn">
             <i className="bi bi-x" style={{ fontSize: '16px' }}></i>
-
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="profile-form">
-          {/* Profile Image */}
           <div className="image-preview">
             {imagePreview ? (
               <img src={imagePreview} alt="Profile" />
@@ -151,7 +146,6 @@ useEffect(() => {
             )}
           </div>
           <div className="image-section">
-            
             <label className="image-upload-btn">
               <i className="bi bi-camera" style={{ fontSize: '16px' }}></i>
               <span>Change picture</span>
@@ -164,7 +158,6 @@ useEffect(() => {
             </label>
           </div>
 
-          {/* Form Fields */}
           <div className="form-grid">
             <div className="form-group">
               <label>First name</label>
@@ -247,7 +240,7 @@ useEffect(() => {
                 <span>Save...</span>
               ) : (
                 <>
-              <i className="bi bi-save" style={{ fontSize: '16px' }}></i>
+                  <i className="bi bi-save" style={{ fontSize: '16px' }}></i>
                   <span>Save changes</span>
                 </>
               )}

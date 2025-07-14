@@ -13,8 +13,8 @@ import {
 import ComposeModal from './ComposeModal';
 import '../styles/MailView.css';
 
-function MailView({ mail, darkMode, restoreMail, moveToSpam, onClose, handlePermanentDelete,selectedCategory,
-   onUpdateMail, setSelectedMail, setSelectedCategory, removeFromSpam     }) {
+function MailView({ mail, darkMode, restoreMail, moveToSpam, onClose, handlePermanentDelete, selectedCategory,
+   onUpdateMail, setSelectedMail, setSelectedCategory, removeFromSpam }) {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
   const [errorUser, setErrorUser] = useState(null);
@@ -26,88 +26,92 @@ function MailView({ mail, darkMode, restoreMail, moveToSpam, onClose, handlePerm
 
 
 useEffect(() => {
-  // check if mail exists and has a valid from field
+  console.log("useEffect 1");
   if (!mail || !mail.from) {
-    setUser(null);
+    console.log("if (!mail || !mail.from) {");
+    //setUser(null);
     return;
   }
+  // check if mail exists and has a valid from field
+  const fromId = typeof mail.from === 'string' ? mail.from : mail.from?._id;
+  console.log("fromId:", fromId);
+
+if (!fromId) {
+  console.log("if (!fromId) {");
+  //setUser(null);
+  return;
+}
 
     async function fetchUser() {
+      console.log("async function fetchUser() {");
       setLoadingUser(true);
       setErrorUser(null);
       try {
-        const res = await fetch(`http://localhost:4000/api/users/${mail.from}`, {
+        const res = await fetch(`http://localhost:4000/api/users/${fromId}`, {
           method: 'GET',
           headers: {
-            'user-id': mail.from,
-            'Authorization': localStorage.getItem('token'), // adqding authorization token
+            Authorization: localStorage.getItem('token'),
           },
         });
-
 
         if (!res.ok) {
           const errorText = await res.text();
           throw new Error(`Failed to fetch user: ${res.status} - ${errorText}`);
         }
+        console.log("res:", res);
 
         const data = await res.json();
-        console.log("user data received:", data);
-        setUser(data);       
-
-       } catch (err) {
-      console.error("Error fetching user:", err);
-      setErrorUser(err.message);
-      setUser(null);
-    } finally {
-      setLoadingUser(false);
+        setUser(data);
+        console.log("Fetched user:", data);
+      } catch (err) {
+        console.error('Error fetching user:', err);
+        setErrorUser(err.message);
+        setUser(null);
+      } finally {
+        setLoadingUser(false);
+      }
     }
+
+    fetchUser();
+    console.log("Mail changed in MailView:", mail);
+    console.log("mail.isRead3:", mail.isRead);
+}, [mail]);
+
+  useEffect(() => {
+  console.log("useEffect 2");
+  if (!mail || !(mail.id || mail._id) || mail.isRead) {
+    console.log("if (!mail || !(mail.id || mail._id) || mail.isRead) {2");
+     return;
   }
 
-  fetchUser();
-}, [mail?.from]); 
+  const mailId = mail.id || mail._id;
 
-useEffect(() => {
-  if (user) {
-    console.log("Updated user:", user);
-    console.log("Updated profileImage:", user.profileImage);
-  }
-}, [user]);
-
-// useEffect to mark mail as read when it is opened
-useEffect(() => {
-  // check if mail exists
-  if (!mail || !mail.id || mail.isRead) {
-    return;
-  }
-// function to mark mail as read
   async function markMailAsRead() {
+    console.log("async function markMailAsRead() {");
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('No authorization token found');
-        return;
-      }
-      
-      const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
+      if (!token) return;
+
+      const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ isRead: true }),
       });
+      console.log("mail.isRead:", mail.isRead);
 
       if (res.ok) {
-        try {
-          const updatedMail = await res.json();
-          onUpdateMail?.(updatedMail);
-        } catch (e) {
-          console.warn('Response was empty, using local update');
-          onUpdateMail?.({ ...mail, isRead: true });
-        }
+        console.log("if (res.ok) {");
+        console.log("mail.isRead2:", mail.isRead);
+        // const updatedMail = await res.json();
+        // console.log("updatedMail:", updatedMail);
+        // onUpdateMail?.(updatedMail);
+        // console.log("onUpdateMail?.(updatedMail);");
       } else {
         const errorText = await res.text();
-        console.error(`Failed to mark mail as read: ${res.status} ${res.statusText} - ${errorText}`);
+        console.error(`Failed to mark mail as read: ${res.status} - ${errorText}`);
       }
     } catch (err) {
       console.error("Network or fetch error:", err);
@@ -115,135 +119,119 @@ useEffect(() => {
   }
 
   markMailAsRead();
-}, [mail?.id, mail?.isRead])
+  console.log("markMailAsRead();");
+  console.log("mail.isRead4:", mail.isRead);
+}, [mail?.id, mail?._id, mail?.isRead]);
 
-const handleResend = () => {
-  setDraftToDeleteAfterSend(mail); // delete the draft after sending
-  setShowComposeModal(true);
-}; 
 
-// function to handle marking mail as unread
-async function handleMarkAsUnread(id) {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('No authorization token found');
-      return;
-    }
+  const handleResend = () => {
+    console.log("const handleResend = () => {");
+    setDraftToDeleteAfterSend(mail);
+    setShowComposeModal(true);
+  };
 
-    const res = await fetch(`http://localhost:4000/api/mails/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ isRead: false }),
-    });
+  async function handleMarkAsUnread(id) {
+    console.log("async function handleMarkAsUnread(id) {");
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
 
-    if (res.ok) {
-      console.log('Mail marked as unread successfully');
-      
-      const responseText = await res.text();
-      let updatedMail;
-      
-      if (responseText.trim()) {
-        try {
-          updatedMail = JSON.parse(responseText);
-        } catch (parseError) {
-          console.warn('Response was not valid JSON, using local update');
+      const res = await fetch(`http://localhost:4000/api/mails/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isRead: false }),
+      });
+
+      if (res.ok) {
+        const responseText = await res.text();
+        let updatedMail;
+        if (responseText.trim()) {
+          try {
+            updatedMail = JSON.parse(responseText);
+          } catch {
+            updatedMail = { ...mail, isRead: false };
+          }
+        } else {
           updatedMail = { ...mail, isRead: false };
         }
+        setShowMenu(false);
+        if (onUpdateMail) onUpdateMail(updatedMail);
+        setSelectedMail(null);
+        if (updatedMail.category && updatedMail.category !== selectedCategory) {
+          setSelectedCategory(updatedMail.category);
+        }
       } else {
-        console.warn('Empty response from server, using local update');
-        updatedMail = { ...mail, isRead: false };
+        const errorText = await res.text();
+        console.error(`Failed to mark as unread: ${res.status} - ${errorText}`);
+        alert('Failed to mark as unread');
       }
-      
-      // update the mail state
-      setShowMenu(false);
-      
-    
-      if (onUpdateMail) {
-        onUpdateMail(updatedMail);
-      }
-      
-      setSelectedMail(null);
-      
-      if (updatedMail.category && updatedMail.category !== selectedCategory) {
-        setSelectedCategory(updatedMail.category);
-      }
-    } else {
-      const errorText = await res.text();
-      console.error(`Failed to mark as unread: ${res.status} ${res.statusText} - ${errorText}`);
-      alert('failed to mark as unread');
+    } catch (error) {
+      console.error('Network error when marking as unread:', error);
+      alert('Network error when marking as unread');
     }
-  } catch (error) {
-    console.error('Network error when marking as unread:', error);
-    alert('network error when marking as unread');
   }
-}
 
-// function to handle danloading attachments
-const handleDownloadAttachment = (attachment) => {
-  try {
-    if (attachment.data) {
-      const byteCharacters = atob(attachment.data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+  const handleDownloadAttachment = (attachment) => {
+    console.log("const handleDownloadAttachment = (attachment) => {");
+    try {
+      if (attachment.data) {
+        const byteCharacters = atob(attachment.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: attachment.contentType || 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = attachment.filename || 'attachment';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else if (attachment.path) {
+        const link = document.createElement('a');
+        link.href = `http://localhost:4000/uploads/${attachment.filename}`;
+        link.download = attachment.filename || 'attachment';
+        link.click();
       }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: attachment.contentType || 'application/octet-stream' });
-               
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = attachment.filename || 'attachment';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading attachment:', error);
+      alert('שגיאה בהורדת הקובץ');
     }
-  
-    else if (attachment.path) {
-      const link = document.createElement('a');
-      link.href = `http://localhost:4000/uploads/${attachment.filename}`;
-      link.download = attachment.filename || 'attachment';
-      link.click();
-    }
-  } catch (error) {
-    console.error('Error downloading attachment:', error);
-    alert('שגיאה בהורדת הקובץ');
-  }
-};
+  };
 
-//  function to handle previewing attachments
-const handlePreviewAttachment = (attachment) => {
-  try {
-    if (attachment.data) {
-      const byteCharacters = atob(attachment.data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+  const handlePreviewAttachment = (attachment) => {
+    console.log("const handlePreviewAttachment = (attachment) => {");
+    try {
+      if (attachment.data) {
+        const byteCharacters = atob(attachment.data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: attachment.contentType || 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } else if (attachment.path) {
+        window.open(`http://localhost:4000/uploads/${attachment.filename}`, '_blank');
       }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: attachment.contentType || 'application/octet-stream' });
-      
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } else if (attachment.path) {
-      window.open(`http://localhost:4000/uploads/${attachment.filename}`, '_blank');
+    } catch (error) {
+      console.error('Error previewing attachment:', error);
+      alert('שגיאה בתצוגה מקדימה של הקובץ');
     }
-  } catch (error) {
-    console.error('Error previewing attachment:', error);
-    alert('שגיאה בתצוגה מקדימה של הקובץ');
-  }
-};
+  };
 
-  // get file icon based on filename and content type
   const getFileIcon = (filename, contentType) => {
+    console.log("const getFileIcon = (filename, contentType) => {");
     const extension = filename?.split('.').pop()?.toLowerCase();
     const type = contentType?.toLowerCase();
-    
+
     if (type?.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg'].includes(extension)) {
       return '🖼️';
     }
@@ -274,7 +262,15 @@ const handlePreviewAttachment = (attachment) => {
     );
   }
 
-  const fromName = user ? `${user.first_name} ${user.last_name}` : loadingUser ? 'Loading...' : errorUser ? 'Unknown' : 'Unknown';
+const fromName = user
+  ? `${user.first_name} ${user.last_name}`
+  : loadingUser
+    ? 'Loading...'
+    : errorUser
+      ? 'Unknown'
+      : 'Unknown';
+
+console.log("fromName:", fromName);
 
   return (
     <div className="mail-view">
@@ -285,8 +281,7 @@ const handlePreviewAttachment = (attachment) => {
               <FiArrowLeft size={20} />
             </button>
             <h1 className="mailview-subject">{mail.subject}</h1>
-            
-          
+
             <div className="dropdown-wrapper">
               <button className="icon-btn" onClick={() => setShowMenu(prev => !prev)}>
                 <FiMoreHorizontal size={18} />
@@ -294,13 +289,13 @@ const handlePreviewAttachment = (attachment) => {
 
               {showMenu && (
                 <div className={`dropdown-menu ${darkMode ? 'dark' : 'light'}`}>
-                  { mail.category !== 'spam' && (
+                  {mail.category !== 'spam' && (
                     <button onClick={() => {
                       moveToSpam(mail);
                       setShowMenu(false);
                       setSelectedMail(null);
                     }}>Mark as Spam</button>
-                    )}
+                  )}
                   {mail.category === 'spam' && (
                     <button onClick={() => {
                       removeFromSpam(mail);
@@ -317,7 +312,6 @@ const handlePreviewAttachment = (attachment) => {
                       <button onClick={() => {handleResend(); setShowMenu(false);}}>Resend</button>
                       <button 
                         onClick={() => {
-                          // otomatically delete the draft after sending
                           handlePermanentDelete(mail);
                           setShowMenu(false);
                         }}
@@ -329,7 +323,7 @@ const handlePreviewAttachment = (attachment) => {
                   )}
                 </div>
               )}
-              </div>
+            </div>
           </div>
         </div>
 
@@ -337,20 +331,21 @@ const handlePreviewAttachment = (attachment) => {
           <div className="sender-left">
             <div className="sender-avatar">
               {user?.profileImage ? (
-                <img
-                  src={`http://localhost:4000/${user.profileImage.replace(/\\/g, '/')}`}
-                  alt="avatar"
-                />
-              ) : (
-                fromName?.charAt(0).toUpperCase() || '?'
-              )}
+              <img
+                src={`http://localhost:4000/${user.profileImage.replace(/\\/g, '/')}`}
+                alt="avatar"
+              />
+            ) : (
+              fromName?.charAt(0).toUpperCase() || '?'
+            )}
+
             </div>
             <div className="sender-details">
               <div className="sender-name">{fromName}</div>
               <div className="send-time">
                 {new Date(mail.timestamp).toLocaleDateString()} at {new Date(mail.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
-              <div className="sender-email">{user && user.mail ? `<${user.mail}>` : ''}</div>
+              <div className="sender-email">{user?.mail ? user.mail : ''}</div>
             </div>
           </div>
         </div>
@@ -365,8 +360,7 @@ const handlePreviewAttachment = (attachment) => {
 
       <div className="mailview-body">
         <p className="mailview-text">{mail.body}</p>
-        
-        {/* showing attachments files */}
+
         {mail.attachments && mail.attachments.length > 0 && (
           <div className="attachments-section">
             <div className="attachments-header">
@@ -417,53 +411,50 @@ const handlePreviewAttachment = (attachment) => {
         </div>
       </div>
 
-      {showReplyModal && (
+      {showReplyModal && user && (
         <ComposeModal
           onClose={() => setShowReplyModal(false)}
           darkMode={darkMode}
           onMailSent={() => setShowReplyModal(false)}
-          prefillTo={user?.mail || ''} 
+          prefillTo={user.mail}
           prefillSubject={`Re: ${mail.subject}`}
-          prefillBody={`\n\n--- Original message from ${user?.mail || 'unknown'} ---\n${mail.body}`}
+          prefillBody={`\n\n--- Original message from ${user.mail} ---\n${mail.body}`}
         />
       )}
-      
-      {/* Foward */}
+
       {showForwardModal && (
         <ComposeModal
           onClose={() => setShowForwardModal(false)}
           darkMode={darkMode}
           onMailSent={() => setShowForwardModal(false)}
-          prefillTo="" 
+          prefillTo=""
           prefillSubject={`Fwd: ${mail.subject}`}
           prefillBody={`\n\n--- Forwarded message ---\nFrom: ${user?.mail || 'unknown'}\nDate: ${new Date(mail.timestamp).toLocaleString()}\nSubject: ${mail.subject}\n\n${mail.body}`}
-          forwardAttachments={mail.attachments} // foward attachments
+          forwardAttachments={mail.attachments}
         />
       )}
 
       {showComposeModal && (
-      <ComposeModal
-        onClose={() => {
-          setShowComposeModal(false);     
-          setDraftToDeleteAfterSend(null); 
-        }}         
-        darkMode={darkMode}
-        onMailSent={() => {
-          if (draftToDeleteAfterSend) {
-            console.log("Deleting draft after successful send:", draftToDeleteAfterSend.id);
-            handlePermanentDelete(draftToDeleteAfterSend);
-          }
-          setShowComposeModal(false);
-          setDraftToDeleteAfterSend(null);
-          onClose();
-        }}
-        prefillTo={mail.toMail || ''}            
-        prefillSubject={mail.subject || ''}
-        prefillBody={mail.body || ''}
-        forwardAttachments={mail.attachments || []} // attachments files in draft
-      />
-    )}
-
+        <ComposeModal
+          onClose={() => {
+            setShowComposeModal(false);
+            setDraftToDeleteAfterSend(null);
+          }}
+          darkMode={darkMode}
+          onMailSent={() => {
+            if (draftToDeleteAfterSend) {
+              handlePermanentDelete(draftToDeleteAfterSend);
+            }
+            setShowComposeModal(false);
+            setDraftToDeleteAfterSend(null);
+            onClose();
+          }}
+          prefillTo={mail.toMail || ''}
+          prefillSubject={mail.subject || ''}
+          prefillBody={mail.body || ''}
+          forwardAttachments={mail.attachments || []}
+        />
+      )}
     </div>
   );
 }

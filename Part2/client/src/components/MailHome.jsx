@@ -43,68 +43,76 @@ export default function MailHome() {
     birthDate: "",
     gender: ""
   });
-// Function to handle mail updates 
+
+  // Function to handle mail updates 
   const handleUpdateMail = (updatedMail) => {
-  setMails(prev =>
-    prev.map(mail => (mail.id === updatedMail.id ? updatedMail : mail))
-  );
-  setSelectedMail(updatedMail);
-};
-  
+    setMails(prev =>
+      prev.map(mail => (mail.id === updatedMail.id ? updatedMail : mail))
+    );
+    setSelectedMail(updatedMail);
+  };
+
   const userMenuRef = useRef(null);
+
+  // Fetch mails on page load or page change
   useEffect(() => {
-  fetchMails(currentPage);
-}, [currentPage]);
+    fetchMails(currentPage);
+  }, [currentPage]);
 
-// Function to fetch mails from the server
+  // Function to fetch mails from the server
   async function fetchMails(page = 1) {
-  setLoading(true);
-  setError(null);
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found. Please login.");
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found. Please login.");
 
-    const res = await fetch(`http://localhost:4000/api/mails?page=${page}`, {      
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      credentials: 'include',
-    });
+      const res = await fetch(`http://localhost:4000/api/mails?page=${page}`, {      
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: 'include',
+      });
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch mails: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch mails: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // המרה של כל מייל להוספת שדה id מה-_id של MongoDB
+      const mailsWithId = data.mails.map(mail => ({
+        ...mail,
+        id: mail._id,
+      }));
+
+      setMails(mailsWithId);
+      setCurrentPage(data.currentPage);
+      setTotalPages(data.totalPages);
+
+      if (selectedMail) {
+        const updatedMail = mailsWithId.find(mail => mail.id === selectedMail.id);
+        setSelectedMail(updatedMail || null);
+      }
+
+    } catch (err) {
+      setError(err.message);
+      setMails([]);
+    } finally {
+      setLoading(false);
     }
-
-    const data = await res.json();
-    setMails(data.mails);
-    setCurrentPage(data.currentPage);
-    setTotalPages(data.totalPages);
-    
-  
-    if (selectedMail) {
-      const updatedMail = data.find(mail => mail.id === selectedMail.id);
-      setSelectedMail(updatedMail || null);  
-    }
-    
-  } catch (err) {
-    setError(err.message);
-    setMails([]);
-  } finally {
-    setLoading(false);
   }
-}
-
 
   // Handle new mail function
-function handleNewMail(newMail) {
-  // check if newMail is a valid object
-  if (newMail && typeof newMail === 'object' && newMail.id) {
-    setMails(prevMails => [newMail, ...prevMails]);
-  } else {
-    // if newMail is not valid, log an error and refresh all mails
-    fetchMails();
+  function handleNewMail(newMail) {
+    // ודא שלמייל החדש יש שדה id (אם לא, המיר מ-_id)
+    if (newMail && typeof newMail === 'object') {
+      const mailWithId = newMail.id ? newMail : { ...newMail, id: newMail._id };
+      setMails(prevMails => [mailWithId, ...prevMails]);
+    } else {
+      fetchMails();
+    }
   }
-}
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -140,12 +148,12 @@ function handleNewMail(newMail) {
           const userData = await res.json();
 
           const profileImagePath = userData.profileImage ? userData.profileImage.replace(/\\/g, '/') : null;
-            const avatarUrl = profileImagePath ? `http://localhost:4000/${profileImagePath}` : null;
+          const avatarUrl = profileImagePath ? `http://localhost:4000/${profileImagePath}` : null;
 
           setUserInfo({
             name: userData.first_name && userData.last_name
-            ? `${userData.first_name} ${userData.last_name}`
-            : "User",
+              ? `${userData.first_name} ${userData.last_name}`
+              : "User",
             email: userData.mail || "user@example.com",
             avatar: userData.profileImage ? `http://localhost:4000/${userData.profileImage.replace(/\\/g, '/')}` : null,
             username: userData.username,
@@ -165,7 +173,6 @@ function handleNewMail(newMail) {
   const handleLogout = () => {
     localStorage.removeItem("token");
     setShowUserMenu(false);
-    // Add navigation to login page or refresh
     window.location.href = "/login";
   };
 
@@ -180,234 +187,241 @@ function handleNewMail(newMail) {
     setUserInfo(updatedUserInfo);
   };
 
-  
-  // fetch mails from the server
+  // Fetch mails on mount
   useEffect(() => {
     fetchMails();
   }, []);
 
-useEffect(() => {
-  // update categories count based on user mails
+  // Update categories count based on user mails
+  useEffect(() => {
+    if (!userInfo) return;
 
-  if (!userInfo) return; // check if there is a user
+    const userMails = mails.filter(mail => mail.toMail === userInfo.email);
+    const userDraft = mails.filter(mail => mail.fromMail === userInfo.email);
 
-  const userMails = mails.filter(mail => mail.toMail === userInfo.email);
-  const userDraft = mails.filter(mail => mail.fromMail === userInfo.email);
+    const updatedCategories = defaultCategories.map(category => {
+      let count = 0;
 
-  const updatedCategories = defaultCategories.map(category => {
-    let count = 0;
+      if (category.name === 'inbox') {
+        count = userMails.filter(mail => mail.category === 'inbox' && mail.isRead === false).length;
+      } else if (category.name === 'spam') {
+        count = userMails.filter(mail => mail.category === 'spam' && mail.isRead === false).length;
+      } else if (category.name === 'drafts') {
+        count = userDraft.filter(mail => mail.category === 'drafts').length;
+      }
+      return { ...category, count };
+    });
 
-    if (category.name === 'inbox') {
-      count = userMails.filter(mail => mail.category === 'inbox' && mail.isRead === false).length;
-    } else if (category.name === 'spam') {
-      count = userMails.filter(mail => mail.category === 'spam' && mail.isRead === false).length;
-    } else if (category.name === 'drafts') {
-      count = userDraft.filter(mail => mail.category === 'drafts').length;
+    setCategories(updatedCategories);
+  }, [mails, userInfo]);
+
+  function getCurrentUserId() {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.userId;
+    } catch {
+      return null;
     }
-    return { ...category, count };
-  });
-
-  setCategories(updatedCategories);
-
-}, [mails, userInfo]);
-
-
-function getCurrentUserId() {
-  const token = localStorage.getItem("token");
-  if (!token) return null;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.userId;
-  } catch {
-    return null;
   }
-}
 
-function filterMailsByCategory() {
-  const userId = getCurrentUserId();
-  if (!userId) return [];
+  function filterMailsByCategory() {
+    const userId = getCurrentUserId();
+    if (!userId) return [];
 
-  let filtered = [];
+    let filtered = [];
 
-  switch (selectedCategory) {
-    case 'inbox':
-      filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'inbox');
-      break;
-    case 'starred':
-      filtered = mails.filter(mail => mail.ownerId === userId && mail.isStarred);
-      break;
-    case 'sent':
-      filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'sent');
-      break;
-    case 'drafts':
-      filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'drafts');
-      break;
-    case 'spam':
-      filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'spam');
-      break;
-    case 'trash':
-      filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'trash');
-    default:
-      filtered = mails;
+    switch (selectedCategory) {
+      case 'inbox':
+        filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'inbox');
+        break;
+      case 'starred':
+        filtered = mails.filter(mail => mail.ownerId === userId && mail.isStarred);
+        break;
+      case 'sent':
+        filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'sent');
+        break;
+      case 'drafts':
+        filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'drafts');
+        break;
+      case 'spam':
+        filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'spam');
+        break;
+      case 'trash':
+        filtered = mails.filter(mail => mail.ownerId === userId && mail.category === 'trash');
+        break;
+      default:
+        filtered = mails;
+    }
+
+    // search functionality
+    if (searchTerm.trim()) {
+      const lower = searchTerm.toLowerCase();
+      filtered = filtered.filter(mail => {
+        const timestampString = new Date(mail.timestamp).toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric'
+        }).toLowerCase();
+
+        return (
+          (mail.subject && mail.subject.toLowerCase().includes(lower)) ||
+          (mail.body && mail.body.toLowerCase().includes(lower)) ||
+          (mail.fromMail && mail.fromMail.toLowerCase().includes(lower)) ||
+          (mail.toMail && mail.toMail.toLowerCase().includes(lower)) ||
+          timestampString.includes(lower)
+        );
+      });
+    }
+
+    return filtered;
   }
-  // serch functionality - if searchTerm is not empty, filter mails by subject or body
-  if (searchTerm.trim()) {
-    const lower = searchTerm.toLowerCase();
-    filtered = filtered.filter(mail => {
-      const timestampString = new Date(mail.timestamp).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric'
-      }).toLowerCase();
 
-      return (
-        (mail.subject && mail.subject.toLowerCase().includes(lower)) ||
-        (mail.body && mail.body.toLowerCase().includes(lower)) ||
-        (mail.fromMail && mail.fromMail.toLowerCase().includes(lower)) ||
-        (mail.toMail && mail.toMail.toLowerCase().includes(lower)) ||
-        timestampString.includes(lower)
+  // Function to toggle star status of a mail
+  const toggleStar = async (mailId_, currentStarred) => {
+    const mailId = mailId_;
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
+      if (!mailId) {
+        console.error("❌ mail is undefined");
+        return;
+      }
+
+      const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isStarred: !currentStarred }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to toggle star");
+      }
+
+      setMails((prevMails) =>
+        prevMails.map((mail) =>
+          mail.id === mailId ? { ...mail, isStarred: !currentStarred } : mail
+        )
       );
-    });
-  }
-
-  return filtered;
-}
-// Function to toggle star status of a mail
-const toggleStar = async (mailId, currentStarred) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
-
-    const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ isStarred: !currentStarred }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to toggle star");
+    } catch (err) {
+      console.error(err);
     }
+  };
 
-    setMails((prevMails) =>
-      prevMails.map((mail) =>
-        mail.id === mailId ? { ...mail, isStarred: !currentStarred } : mail
-      )
-    );
-  } catch (err) {
-    console.error(err);
-  }
-};
+  // Function to move a mail to trash
+  const moveToTrash = async (mailId) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
 
-// Function to move a mail to trash
-const moveToTrash = async (mailId) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
+      // find the mail to move
+      const mailToMove = mails.find(mail => mail.id === mailId);
+      if (!mailToMove) throw new Error("Mail not found.");
 
-    // first, find the mail to move
-    const mailToMove = mails.find(mail => mail.id === mailId);
-    if (!mailToMove) throw new Error("Mail not found.");
+      const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ 
+          category: "trash", 
+          previousCategory: mailToMove.category 
+        }),
+      });
 
-    const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ 
-        category: "trash", 
-        previousCategory: mailToMove.category // save the previous category
-      }),
-    });
+      if (!res.ok) {
+        throw new Error("Failed to move mail to trash");
+      }
 
-    if (!res.ok) {
-      throw new Error("Failed to move mail to trash");
+      setMails((prevMails) =>
+        prevMails.map((mail) =>
+          mail.id === mailId 
+            ? { 
+                ...mail, 
+                category: "trash", 
+                isStarred: false, 
+                previousCategory: mailToMove.category 
+              } 
+            : mail
+        )
+      );
+    } catch (err) {
+      console.error(err);
     }
+  };
 
-    // if the update was successful, update the local state
-    setMails((prevMails) =>
-      prevMails.map((mail) =>
-        mail.id === mailId 
-          ? { 
-              ...mail, 
-              category: "trash", 
-              isStarred: false, 
-              previousCategory: mailToMove.category 
-            } 
-          : mail
-      )
-    );
-  } catch (err) {
-    console.error(err);
-  }
-};
+  // Function to restore a mail from trash
+  const restoreMail = async (mailId, previousCategory) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
 
-// Function to restore a mail to its previous category from trash
-const restoreMail = async (mailId, previousCategory) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
+      const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ category: previousCategory }),
+      });
 
-    const res = await fetch(`http://localhost:4000/api/mails/${mailId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ category: previousCategory }),
-    });
+      if (!res.ok) {
+        throw new Error("Failed to restore mail");
+      }
 
-    if (!res.ok) {
-      throw new Error("Failed to restore mail");
+      setMails((prevMails) =>
+        prevMails.map((mail) =>
+          mail.id === mailId
+            ? { ...mail, category: previousCategory }
+            : mail
+        )
+      );
+
+      setSelectedMail(null);
+      setSelectedCategory(previousCategory);
+
+    } catch (err) {
+      console.error(err);
     }
+  };
 
-    setMails((prevMails) =>
-      prevMails.map((mail) =>
-        mail.id === mailId
-          ? { ...mail, category: previousCategory }
-          : mail
-      )
-    );
-    
-    // close the mail view and reset selected category
-    setSelectedMail(null);
-    setSelectedCategory(previousCategory);
-    
-  } catch (err) {
-    console.error(err);
-  }
-};
+  // Function to remove a mail from spam and blacklist
+  const removeFromSpam = async (mail) => {
+    try {
+      console.log("mail:", mail); // ← בדיקה חשובה
+      if (!mail || !(mail.id || mail._id)) {
+        console.error("Mail object is missing ID");
+        return;
+      }
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
 
-// Function to remove a mail from spam and get it out from the blacklist
-const removeFromSpam = async (mail) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
+      const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ category: mail.previousCategory }),
+      });
 
-    const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ category: mail.previousCategory }),
-    });
+      if (!res.ok) {
+        throw new Error("Failed to move mail from spam");
+      }
 
-    if (!res.ok) {
-      throw new Error("Failed to move mail from spam");
-    }
+      setMails((prevMails) =>
+        prevMails.map((mailcheck) =>
+          mailcheck.id === mail.id ? { ...mailcheck, category: mail.previousCategory } : mailcheck
+        )
+      );
 
-    setMails((prevMails) =>
-      prevMails.map((mailcheck) =>
-        mailcheck.id === mail.id ? { ...mailcheck, category: mail.previousCategory } : mailcheck
-      )
-    );
-    
       const res2 = await fetch(`http://localhost:4000/api/blacklist/${mail.id}`, {
         method: "DELETE",
         headers: {
@@ -417,101 +431,99 @@ const removeFromSpam = async (mail) => {
       });
 
       if (!res2.ok) {
-      throw new Error("Failed to remove mail from blacklist");
+        throw new Error("Failed to remove mail from blacklist");
+      }
+    } catch (err) {
+      console.error(err);
     }
-  } catch (err) {
-    console.error(err);
-  }
-};
+  };
 
-// Function to move a mail to spam and add it to the blacklist
-const moveToSpam = async (mail) => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
+  // Function to move a mail to spam and add to blacklist
+  const moveToSpam = async (mail) => {
+    try {
+      console.log("mail:", mail); // ← בדיקה חשובה
+      if (!mail || !(mail.id || mail._id)) {
+        console.error("Mail object is missing ID");
+        return;
+      }
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
 
-    const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ category: "spam", isStarred: false }),
-    });
+      const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ category: "spam", isStarred: false }),
+      });
 
-    if (!res.ok) {
-      throw new Error("Failed to move mail to spam");
-    }
+      if (!res.ok) {
+        throw new Error("Failed to move mail to spam");
+      }
 
-    setMails((prevMails) =>
-      prevMails.map((mailcheck) =>
-        mailcheck.id === mail.id ? { ...mailcheck, category: "spam" , isStarred: false } : mailcheck
-      )
-    );
-    
+      setMails((prevMails) =>
+        prevMails.map((mailcheck) =>
+          mailcheck.id === mail.id ? { ...mailcheck, category: "spam", isStarred: false } : mailcheck
+        )
+      );
+
       const res2 = await fetch("http://localhost:4000/api/blacklist", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ subject: mail.subject, body: mail.body, }),
+        body: JSON.stringify({ subject: mail.subject, body: mail.body }),
       });
 
       if (!res2.ok) {
-      throw new Error("Failed to move mail to blacklist");
-    }
-
-    
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-// Function to handle permanent deletion of mails
-const handlePermanentDelete = async (mailsToDelete) => {
-
-  const mailsArray = Array.isArray(mailsToDelete) ? mailsToDelete : [mailsToDelete];
-
-  const hasNonDraft = mailsArray.some(mail => mail.category !== 'drafts');
-
-// If there are non-draft mails, confirm with the user before deletion
-  if (hasNonDraft) {
-    const confirmDelete = window.confirm("Are you sure you want to permanently delete the selected email(s)?");
-    if (!confirmDelete) return;
-  }
-
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) throw new Error("No token found.");
-
-    for (const mail of mailsArray) {
-      const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to delete email: ${res.status} - ${errorText}`);
+        throw new Error("Failed to move mail to blacklist");
       }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Function to handle permanent deletion of mails
+  const handlePermanentDelete = async (mailsToDelete) => {
+    const mailsArray = Array.isArray(mailsToDelete) ? mailsToDelete : [mailsToDelete];
+    const hasNonDraft = mailsArray.some(mail => mail.category !== 'drafts');
+
+    if (hasNonDraft) {
+      const confirmDelete = window.confirm("Are you sure you want to permanently delete the selected email(s)?");
+      if (!confirmDelete) return;
     }
 
-    setMails(prev => prev.filter(mail => !mailsArray.some(toDelete => toDelete.id === mail.id)));
-    
-    if (selectedMail && mailsArray.some(mail => mail.id === selectedMail.id)) {
-      setSelectedMail(null);
+        try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No token found.");
+
+      for (const mail of mailsArray) {
+        const res = await fetch(`http://localhost:4000/api/mails/${mail.id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(`Failed to delete email: ${res.status} - ${errorText}`);
+        }
+      }
+
+      setMails(prev => prev.filter(mail => !mailsArray.some(toDelete => toDelete.id === mail.id)));
+
+      if (selectedMail && mailsArray.some(mail => mail.id === selectedMail.id)) {
+        setSelectedMail(null);
+      }
+
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("Failed to delete one or more emails permanently: " + err.message);
     }
-
-  } catch (err) {
-    console.error("Delete error:", err);
-    alert("Failed to delete one or more emails permanently: " + err.message);
-  }
-};
-
-
+  };
 
   return (
     <div className={`mail-home ${darkMode ? 'dark' : 'light'}`}>
@@ -528,18 +540,18 @@ const handlePermanentDelete = async (mailsToDelete) => {
             </button>
             <div className="logo">
               <img
-                  src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico"
-                  alt="Gmail Icon"
-                  className="logo-image"
-                />              
+                src="https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico"
+                alt="Gmail Icon"
+                className="logo-image"
+              />
               <span className="logo-text">Gmail</span>
             </div>
           </div>
 
           <div className="search-wrapper">
-            <button 
-              onClick={() => setSearchTerm(searchInput)} 
-              className="search-icon-button" 
+            <button
+              onClick={() => setSearchTerm(searchInput)}
+              className="search-icon-button"
               aria-label="Search"
             >
               <i className="bi bi-search" style={{ fontSize: '20px' }}></i>
@@ -564,10 +576,13 @@ const handlePermanentDelete = async (mailsToDelete) => {
               className="icon-btn"
               aria-label="Toggle Dark Mode"
             >
-              {darkMode ? <i className="bi bi-sun" style={{ fontSize: '20px' }}></i> : <i className="bi bi-moon" style={{ fontSize: '20px' }}></i>}
+              {darkMode ? (
+                <i className="bi bi-sun" style={{ fontSize: '20px' }}></i>
+              ) : (
+                <i className="bi bi-moon" style={{ fontSize: '20px' }}></i>
+              )}
             </button>
-            
-            
+
             {/* User Menu */}
             <div className={`user-menu-container ${darkMode ? 'dark' : ''}`} ref={userMenuRef}>
               <button
@@ -590,9 +605,9 @@ const handlePermanentDelete = async (mailsToDelete) => {
                       <p>{userInfo.email}</p>
                     </div>
                   </div>
-                  
+
                   <div className="user-menu-divider"></div>
-                  
+
                   <div className="user-menu-items">
                     <button
                       onClick={handleEditProfile}
@@ -601,7 +616,7 @@ const handlePermanentDelete = async (mailsToDelete) => {
                       <i className="bi bi-person" style={{ fontSize: '16px' }}></i>
                       <span>Edit profile</span>
                     </button>
-                    
+
                     <button
                       onClick={handleLogout}
                       className="user-menu-item logout"
@@ -619,29 +634,31 @@ const handlePermanentDelete = async (mailsToDelete) => {
 
       {/* Main Content */}
       <main className="main-content">
-  {/* Sidebar*/}
-  {!sidebarCollapsed && (
-    <Sidebar
-      onCompose={() => setShowCompose(true)}
-      selectedCategory={selectedCategory}
-      onCategorySelect={(category) => {
-        setSelectedCategory(category);
-        setSelectedLabel('');
-      }}
-      setSelectedCategory={setSelectedCategory}
-      setMails={setMails}
-      categories={categories}
-      labels={labels}
-      darkMode={darkMode}
-      selectedLabel={selectedLabel}
-      onLabelSelect={(labelName) => {
-        setSelectedLabel(labelName);
-        setSelectedCategory('');
-      }} />
-      )}
+        {/* Sidebar */}
+        {!sidebarCollapsed && (
+          <Sidebar
+            onCompose={() => setShowCompose(true)}
+            selectedCategory={selectedCategory}
+            onCategorySelect={(category) => {
+              setSelectedCategory(category);
+              setSelectedLabel('');
+            }}
+            setSelectedCategory={setSelectedCategory}
+            setMails={setMails}
+            categories={categories}
+            labels={labels}
+            darkMode={darkMode}
+            selectedLabel={selectedLabel}
+            onLabelSelect={(labelName) => {
+              setSelectedLabel(labelName);
+              setSelectedCategory('');
+            }}
+          />
+        )}
+
         {/* Mail content */}
         <div className="mail-content">
-          {!selectedMail && mails.length > 0  ? (
+          {!selectedMail && mails.length > 0 ? (
             <MailList
               mails={filterMailsByCategory()}
               loading={loading}
@@ -662,7 +679,7 @@ const handlePermanentDelete = async (mailsToDelete) => {
               searchTerm={searchTerm}
             />
           ) : (
-            <MailView 
+            <MailView
               mail={selectedMail}
               darkMode={darkMode}
               restoreMail={restoreMail}
@@ -671,32 +688,30 @@ const handlePermanentDelete = async (mailsToDelete) => {
               handlePermanentDelete={handlePermanentDelete}
               selectedCategory={selectedCategory}
               onUpdateMail={handleUpdateMail}
-              setSelectedMail={setSelectedMail}         
-              setSelectedCategory={setSelectedCategory}  
+              setSelectedMail={setSelectedMail}
+              setSelectedCategory={setSelectedCategory}
               removeFromSpam={removeFromSpam}
-              
             />
           )}
         </div>
 
         {showCompose && (
-          <ComposeModal 
-            onClose={() => setShowCompose(false)} 
-            darkMode={darkMode} 
-            onMailSent={handleNewMail} 
-          />        
+          <ComposeModal
+            onClose={() => setShowCompose(false)}
+            darkMode={darkMode}
+            onMailSent={handleNewMail}
+          />
         )}
 
         {showProfileModal && (
-          <UserProfileModal 
-            onClose={() => setShowProfileModal(false)} 
+          <UserProfileModal
+            onClose={() => setShowProfileModal(false)}
             darkMode={darkMode}
             userInfo={userInfo}
             onUserUpdate={handleUserUpdate}
           />
         )}
       </main>
-
     </div>
   );
 }
