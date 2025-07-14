@@ -1,5 +1,7 @@
 package com.example.project5.model;
 
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,12 +32,12 @@ public class Mail {
     public List<String> label = new ArrayList<>();
     public String category;
 
-    // ✅ הוספת תמיכה במצורפים
     public List<Attachment> attachments = new ArrayList<>();
 
     public static Mail fromJson(JSONObject obj) throws JSONException {
         Mail mail = new Mail();
-        mail.id = obj.optString("_id", "");
+
+        mail.id = obj.optString("_id", obj.optString("id", ""));
         mail.from = obj.optString("from", "");
         mail.fromMail = obj.optString("fromMail", "");
         mail.subject = obj.optString("subject", "");
@@ -45,16 +47,22 @@ public class Mail {
         mail.isStarred = obj.optBoolean("isStarred", false);
         mail.isRead = obj.optBoolean("isRead", false);
         mail.hasAttachment = obj.optBoolean("hasAttachment", false);
-        mail.category = obj.optString("category", "");
+        mail.category = obj.optString("category", "inbox");
         mail.sendTo = obj.optString("sendTo", "");
 
-        if (obj.has("label")) {
+        // תוויות
+        if (obj.has("label") && !obj.isNull("label")) {
             JSONArray labelsArray = obj.getJSONArray("label");
             for (int i = 0; i < labelsArray.length(); i++) {
-                mail.label.add(labelsArray.getString(i));
+                String label = labelsArray.optString(i, "");
+                if (!label.isEmpty()) {
+                    mail.label.add(label);
+                }
             }
         }
-        if (obj.has("from") && obj.get("from") instanceof JSONObject) {
+
+        // נתוני השולח כאובייקט (אם קיימים)
+        if (obj.has("from") && obj.opt("from") instanceof JSONObject) {
             JSONObject sender = obj.getJSONObject("from");
             mail.firstName = sender.optString("first_name", "");
             mail.lastName = sender.optString("last_name", "");
@@ -62,19 +70,31 @@ public class Mail {
             mail.profileImage = sender.optString("profileImage", "");
         }
 
-
-
-        // ✅ קריאת מצורפים מהשרת
-        if (obj.has("attachments")) {
+        // מצורפים
+        if (obj.has("attachments") && !obj.isNull("attachments")) {
             JSONArray attachmentsArray = obj.getJSONArray("attachments");
+            mail.attachments = new ArrayList<>();
+
             for (int i = 0; i < attachmentsArray.length(); i++) {
-                JSONObject attObj = attachmentsArray.getJSONObject(i);
-                Attachment attachment = new Attachment();
-                attachment.filename = attObj.optString("filename", "");
-                attachment.path = attObj.optString("path", "");
-                attachment.contentType = attObj.optString("contentType", "");
-                attachment.size = attObj.optLong("size", 0);
-                mail.attachments.add(attachment);
+                try {
+                    JSONObject attObj = attachmentsArray.getJSONObject(i);
+                    Attachment attachment = new Attachment();
+
+                    attachment.filename = attObj.optString("filename", "");
+                    attachment.contentType = attObj.optString("contentType", "");
+                    attachment.size = attObj.optLong("size", 0);
+                    attachment.path = attObj.optString("path", "");
+
+                    if (attObj.has("data") && !attObj.isNull("data")) {
+                        attachment.data = attObj.getString("data");
+                    }
+
+                    if (!attachment.filename.isEmpty()) {
+                        mail.attachments.add(attachment);
+                    }
+                } catch (JSONException e) {
+                    Log.e("Mail", "Error parsing attachment " + i + ": " + e.getMessage());
+                }
             }
         }
 
@@ -105,7 +125,7 @@ public class Mail {
             sender.put("profileImage", profileImage);
             obj.put("sender", sender);
 
-            // ✅ הוספת מצורפים להמרה ל-JSON
+            // מצורפים
             JSONArray attachmentsArray = new JSONArray();
             for (Attachment att : attachments) {
                 JSONObject attObj = new JSONObject();
@@ -121,5 +141,22 @@ public class Mail {
             e.printStackTrace();
         }
         return obj;
+    }
+
+    // פונקציית דיבוג
+    public void debugPrint() {
+        Log.d("Mail", "=== Mail Debug Info ===");
+        Log.d("Mail", "ID: " + id);
+        Log.d("Mail", "Subject: " + subject);
+        Log.d("Mail", "From: " + fromMail);
+        Log.d("Mail", "Category: " + category);
+        Log.d("Mail", "Attachments count: " + (attachments != null ? attachments.size() : 0));
+        if (attachments != null) {
+            for (int i = 0; i < attachments.size(); i++) {
+                Attachment att = attachments.get(i);
+                Log.d("Mail", "Attachment " + i + ": " + att.filename + " (" + att.size + " bytes)");
+            }
+        }
+        Log.d("Mail", "=====================");
     }
 }

@@ -6,18 +6,54 @@ package com.example.project5.model;
  * לצורך הצגת שם, סוג וגודל קובץ במסך MailDetailActivity.
  */
 public class Attachment {
-    public String filename;
-    public String path;
-    public String contentType;
-    public long size;
+    // מחלקת Attachment עם בדיקות null safety
 
-    // נדרש לפיענוח JSON אוטומטי (GSON / Moshi או org.json)
-    public Attachment() {}
+        public String filename;
+        public String contentType;
+        public long size;
+        public String path;
+        public String data; // עבור base64 encoded data
 
-    public Attachment(String filename, String path, String contentType, long size) {
-        this.filename = filename;
-        this.path = path;
-        this.contentType = contentType;
-        this.size = size;
+        public Attachment() {
+            // בנאי ריק
+        }
+
+//        // בנאי עם פרמטרים
+//        public Attachment(String filename, String contentType, long size, String path) {
+//            this.filename = filename != null ? filename : "";
+//            this.contentType = contentType != null ? contentType : "";
+//            this.size = size;
+//            this.path = path != null ? path : "";
+//        }
+
+        // מתודות עזר
+        public boolean isValid() {
+            return filename != null && !filename.isEmpty();
+        }
+
+        public String getFormattedSize() {
+            if (size <= 0) return "0 B";
+            final String[] units = new String[]{"B", "KB", "MB", "GB"};
+            int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+            return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
+        }
+
+        public boolean hasData() {
+            return data != null && !data.isEmpty();
+        }
+
+        public boolean hasPath() {
+            return path != null && !path.isEmpty();
+        }
+
+        @Override
+        public String toString() {
+            return "Attachment{" +
+                    "filename='" + filename + '\'' +
+                    ", contentType='" + contentType + '\'' +
+                    ", size=" + size +
+                    ", path='" + path + '\'' +
+                    ", hasData=" + hasData() +
+                    '}';
+        }
     }
-}

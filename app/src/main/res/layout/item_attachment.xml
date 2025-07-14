@@ -1,40 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:padding="8dp"
-    android:gravity="center_vertical">
+    android:padding="12dp"
+    android:background="?android:attr/selectableItemBackground"
+    android:layout_marginBottom="4dp">
 
-    <TextView
-        android:id="@+id/tvFileName"
+    <ImageView
+        android:id="@+id/ivFileIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="12dp"
+        android:src="@android:drawable/ic_menu_gallery"
+        android:contentDescription="File icon" />
+
+    <LinearLayout
         android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_height="wrap_content"
-        android:text="filename.pdf"
-        android:textSize="16sp"
-        android:padding="4dp"/>
+        android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/tvFileSize"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="512 KB"
-        android:padding="4dp"/>
+        <TextView
+            android:id="@+id/tvFileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="filename.pdf"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
-    <ImageButton
-        android:id="@+id/btnViewAttachment"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_eye"
-        android:contentDescription="View"
-        android:background="?attr/selectableItemBackgroundBorderless" />
+        <TextView
+            android:id="@+id/tvFileSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1.2 MB"
+            android:textColor="#666666"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp" />
 
-    <ImageButton
-        android:id="@+id/btnDownloadAttachment"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/ic_download"
+    </LinearLayout>
+
+    <ImageView
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="center_vertical"
+        android:src="@android:drawable/stat_sys_download"
         android:contentDescription="Download"
-        android:background="?attr/selectableItemBackgroundBorderless" />
+        android:layout_marginStart="8dp" />
 
 </LinearLayout>

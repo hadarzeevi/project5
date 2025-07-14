@@ -13,10 +13,12 @@ import androidx.appcompat.widget.PopupMenu;
 
 import com.bumptech.glide.Glide;
 import com.example.project5.R;
+import com.example.project5.model.Attachment;
 import com.example.project5.model.Mail;
 import com.example.project5.utils.SpamUtils;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -26,6 +28,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import android.content.ActivityNotFoundException;
+import android.net.Uri;
 
 public class MailDetailActivity extends AppCompatActivity {
 
@@ -35,12 +41,61 @@ public class MailDetailActivity extends AppCompatActivity {
     private Mail mail;
     private boolean isSpamCategory = false;
 
+    private LinearLayout attachmentsContainer;
+    private RecyclerView rvAttachments;
+    private TextView tvAttachmentsTitle;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mail_detail);
 
-        // רכיבי ממשק
+        // אתחול רכיבי ממשק
+        initializeViews();
+
+        try {
+            String mailJson = getIntent().getStringExtra("MAIL_JSON");
+            if (mailJson == null || mailJson.isEmpty()) {
+                Log.e("MailDetailActivity", "No mail JSON provided");
+                Toast.makeText(this, "שגיאה: אין נתוני מייל", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+
+            Log.d("MailDetailActivity", "Received mail JSON: " + mailJson);
+
+            JSONObject json = new JSONObject(mailJson);
+            mail = Mail.fromJson(json);
+            mail.debugPrint(); // ← זה יראה את כל הפרטים כולל מצורפים
+
+
+            if (mail == null) {
+                Log.e("MailDetailActivity", "Failed to parse mail from JSON");
+                Toast.makeText(this, "שגיאה בפענוח נתוני המייל", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+
+            Log.d("MailDetailActivity", "Successfully parsed mail: " + mail.id);
+
+            isSpamCategory = "spam".equalsIgnoreCase(mail.category);
+            loadMailData();
+
+        } catch (JSONException e) {
+            Log.e("MailDetailActivity", "JSON parsing error: " + e.getMessage());
+            Toast.makeText(this, "שגיאה בפענוח נתוני המייל", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        } catch (Exception e) {
+            Log.e("MailDetailActivity", "General error: " + e.getMessage());
+            Toast.makeText(this, "שגיאה בטעינת המייל", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        setupClickListeners();
+    }
+    private void initializeViews() {
         tvSubject = findViewById(R.id.tvSubject);
         tvSenderName = findViewById(R.id.tvSenderName);
         tvSenderEmail = findViewById(R.id.tvSenderEmail);
@@ -53,19 +108,9 @@ public class MailDetailActivity extends AppCompatActivity {
         btnReply = findViewById(R.id.btnReply);
         btnForward = findViewById(R.id.btnForward);
         ivMore = findViewById(R.id.ivMore);
-
-        try {
-            String mailJson = getIntent().getStringExtra("MAIL_JSON");
-            JSONObject json = new JSONObject(mailJson);
-            mail = Mail.fromJson(json);
-            isSpamCategory = "spam".equalsIgnoreCase(mail.category);
-            loadMailData();
-        } catch (Exception e) {
-            Toast.makeText(this, "שגיאה בטעינת מייל", Toast.LENGTH_SHORT).show();
-            finish();
-        }
-
-        setupClickListeners();
+        attachmentsContainer = findViewById(R.id.attachmentsContainer);
+        rvAttachments = findViewById(R.id.rvAttachments);
+        tvAttachmentsTitle = findViewById(R.id.tvAttachmentsTitle);
     }
 
     private void setupClickListeners() {
@@ -122,15 +167,29 @@ public class MailDetailActivity extends AppCompatActivity {
             Glide.with(this)
                     .load(url)
                     .placeholder(R.drawable.ic_avatar)
-                    .error(R.drawable.ic_avatar) // ← במקרה שהתמונה לא נטענת
+                    .error(R.drawable.ic_avatar)
                     .circleCrop()
                     .into(ivAvatar);
         } else {
-            ivAvatar.setImageResource(R.drawable.ic_avatar); // ← ברירת מחדל
+            ivAvatar.setImageResource(R.drawable.ic_avatar);
         }
-        updateStarIcon();
-    }
 
+        updateStarIcon();
+
+        // תיקון בטיפול במצורפים
+        try {
+            displayAttachments();
+        } catch (Exception e) {
+            Log.e("MailDetailActivity", "Error displaying attachments: " + e.getMessage());
+            // הסתרת קונטיינר המצורפים במקרה של שגיאה
+            if (attachmentsContainer != null) {
+                attachmentsContainer.setVisibility(View.GONE);
+            }
+            if (tvAttachmentsTitle != null) {
+                tvAttachmentsTitle.setVisibility(View.GONE);
+            }
+        }
+    }
     private void updateStarIcon() {
         ivStar.setImageResource(mail.isStarred ? R.drawable.ic_star : R.drawable.ic_star_border);
     }
@@ -515,5 +574,80 @@ public class MailDetailActivity extends AppCompatActivity {
                 Log.e("MailDetailActivity", "Error updating star status: " + e.getMessage());
             }
         }).start();
+    }
+    // פונקציה חדשה להצגת המצורפים
+    private void displayAttachments() {
+        Log.d("MailDetailActivity", "Displaying attachments for mail: " + mail.id);
+
+        if (attachmentsContainer == null || tvAttachmentsTitle == null || rvAttachments == null) {
+            Log.e("MailDetailActivity", "Attachment views not found");
+            return;
+        }
+
+        if (mail.attachments != null && !mail.attachments.isEmpty()) {
+            Log.d("MailDetailActivity", "Found " + mail.attachments.size() + " attachments");
+
+            // הדפסת מידע על כל מצורף לדיבוג
+            for (int i = 0; i < mail.attachments.size(); i++) {
+                Attachment attachment = mail.attachments.get(i);
+                Log.d("MailDetailActivity", "Attachment " + i + ": " +
+                        "filename=" + attachment.filename +
+                        ", size=" + attachment.size +
+                        ", contentType=" + attachment.contentType +
+                        ", path=" + attachment.path);
+            }
+
+            attachmentsContainer.setVisibility(View.VISIBLE);
+            tvAttachmentsTitle.setVisibility(View.VISIBLE);
+            tvAttachmentsTitle.setText("קבצים מצורפים (" + mail.attachments.size() + ")");
+
+            try {
+                AttachmentAdapter adapter = new AttachmentAdapter(mail.attachments, this::downloadAttachment);
+                rvAttachments.setLayoutManager(new LinearLayoutManager(this));
+                rvAttachments.setAdapter(adapter);
+            } catch (Exception e) {
+                Log.e("MailDetailActivity", "Error setting up attachment adapter: " + e.getMessage());
+                Toast.makeText(this, "שגיאה בהצגת קבצים מצורפים", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            Log.d("MailDetailActivity", "No attachments found");
+            attachmentsContainer.setVisibility(View.GONE);
+            tvAttachmentsTitle.setVisibility(View.GONE);
+        }
+    }
+
+    // פונקציה להורדת מצורף
+    private void downloadAttachment(Attachment attachment) {
+        Log.d("MailDetailActivity", "Downloading attachment: " + attachment.filename);
+
+        if (attachment == null) {
+            Toast.makeText(this, "שגיאה: קובץ לא תקין", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            String downloadUrl;
+
+            // בדיקה אם יש נתיב לקובץ
+            if (attachment.filename != null && !attachment.filename.isEmpty()) {
+                downloadUrl = "http://10.0.2.2:4000/uploads/" + attachment.filename;
+                Log.d("MailDetailActivity", "Using download URL: " + downloadUrl);
+            } else {
+                Toast.makeText(this, "אין שם קובץ תקין למצורף", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Log.d("MailDetailActivity", "Download URL: " + downloadUrl);
+
+            // פתיחת דפדפן להורדה
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
+            startActivity(intent);
+
+        } catch (ActivityNotFoundException e) {
+            Log.e("MailDetailActivity", "No app to handle download: " + e.getMessage());
+            Toast.makeText(this, "לא ניתן לפתוח קובץ מסוג זה", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("MailDetailActivity", "Error downloading attachment: " + e.getMessage());
+            Toast.makeText(this, "שגיאה בהורדת הקובץ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 }

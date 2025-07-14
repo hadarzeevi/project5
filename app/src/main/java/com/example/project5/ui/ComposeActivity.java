@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -140,33 +141,42 @@ public class ComposeActivity extends Activity {
         String subject = etSubject.getText().toString().trim();
         String body = etBody.getText().toString().trim();
 
+        Log.d("SEND_MAIL", "Trying to send mail to: " + to + ", subject: " + subject);
+
         if (to.isEmpty() || subject.isEmpty()) {
             Toast.makeText(this, "נא למלא כתובת ונושא", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // בדיקה האם כתובת הנמען ברשימת blacklist
         boolean isSpam = SpamUtils.isEmailBlacklisted(this, to);
+        Log.d("SEND_MAIL", "isSpam? " + isSpam);
 
-        // בניית הבקשה
         MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("sendTo", to)
                 .addFormDataPart("subject", subject)
                 .addFormDataPart("body", body)
                 .addFormDataPart("isSpam", String.valueOf(isSpam));
 
-        // צרוף קובץ אם יש
         if (selectedFileUri != null) {
             String fileName = getFileName(selectedFileUri);
+            String mimeType = getContentResolver().getType(selectedFileUri);
+
+            Log.d("SEND_MAIL", "File selected: " + fileName + " | MIME type: " + mimeType);
+
+            if (mimeType == null) {
+                mimeType = "application/octet-stream";
+                Log.w("SEND_MAIL", "MIME type was null, using default: " + mimeType);
+            }
+
             try {
                 InputStream inputStream = getContentResolver().openInputStream(selectedFileUri);
                 byte[] fileBytes = getBytes(inputStream);
 
-                RequestBody fileBody = RequestBody.create(fileBytes,
-                        MediaType.parse(getContentResolver().getType(selectedFileUri)));
-
+                RequestBody fileBody = RequestBody.create(fileBytes, MediaType.parse(mimeType));
                 builder.addFormDataPart("attachments", fileName, fileBody);
+                Log.d("SEND_MAIL", "Attachment added to request");
             } catch (IOException e) {
+                Log.e("SEND_MAIL", "Failed to read selected file", e);
                 Toast.makeText(this, "שגיאה בקריאת הקובץ", Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -180,18 +190,27 @@ public class ComposeActivity extends Activity {
                 .addHeader("Authorization", "Bearer " + token)
                 .build();
 
+        Log.d("SEND_MAIL", "Sending request to server...");
+
         client.newCall(mailRequest).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                Log.e("SEND_MAIL", "Network error while sending mail", e);
                 runOnUiThread(() -> Toast.makeText(ComposeActivity.this, "שגיאה בשליחת מייל", Toast.LENGTH_SHORT).show());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
+                String responseBody = response.body() != null ? response.body().string() : "No response body";
+                Log.d("SEND_MAIL", "Server responded with code: " + response.code());
+                Log.d("SEND_MAIL", "Response body: " + responseBody);
+
                 runOnUiThread(() -> {
                     if (response.isSuccessful()) {
-                        // אם זו טיוטה – מוחקים אותה מהשרת
+                        Log.i("SEND_MAIL", "Mail sent successfully");
+
                         if (draftId != null && !draftId.isEmpty()) {
+                            Log.d("SEND_MAIL", "Deleting draft: " + draftId);
                             Request deleteRequest = new Request.Builder()
                                     .url("http://10.0.2.2:4000/api/mails/" + draftId)
                                     .delete()
@@ -200,10 +219,14 @@ public class ComposeActivity extends Activity {
 
                             client.newCall(deleteRequest).enqueue(new Callback() {
                                 @Override
-                                public void onFailure(Call call, IOException e) { e.printStackTrace(); }
+                                public void onFailure(Call call, IOException e) {
+                                    Log.e("SEND_MAIL", "Failed to delete draft", e);
+                                }
 
                                 @Override
-                                public void onResponse(Call call, Response response) {}
+                                public void onResponse(Call call, Response response) {
+                                    Log.d("SEND_MAIL", "Draft deletion response: " + response.code());
+                                }
                             });
                         }
 
@@ -212,7 +235,8 @@ public class ComposeActivity extends Activity {
                         intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                         startActivity(intent);
                     } else {
-                        Toast.makeText(ComposeActivity.this, "שגיאה בשליחה", Toast.LENGTH_SHORT).show();
+                        Log.e("SEND_MAIL", "Server returned error: " + response.code());
+                        Toast.makeText(ComposeActivity.this, "שגיאה בשליחה: " + responseBody, Toast.LENGTH_LONG).show();
                     }
                 });
             }
