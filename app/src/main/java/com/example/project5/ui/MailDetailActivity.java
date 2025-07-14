@@ -636,6 +636,7 @@ public class MailDetailActivity extends AppCompatActivity {
                 Toast.makeText(this, "אין שם קובץ תקין למצורף", Toast.LENGTH_SHORT).show();
                 return;
             }
+
             Log.d("MailDetailActivity", "Download URL: " + downloadUrl);
 
             // פתיחת דפדפן להורדה

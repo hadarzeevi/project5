@@ -1,5 +1,6 @@
 package com.example.project5.ui;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -64,22 +65,77 @@ public class AttachmentAdapter extends RecyclerView.Adapter<AttachmentAdapter.At
         }
 
         public void bind(Attachment attachment) {
-            tvFileName.setText(attachment.filename);
+            Log.d("AttachmentAdapter", "Binding attachment: " + attachment.toString());
+
+            // הצגת שם הקובץ
+            String displayName = attachment.filename;
+            if (displayName == null || displayName.isEmpty()) {
+                displayName = attachment.path != null ? attachment.path : "קובץ מצורף";
+            }
+            tvFileName.setText(displayName);
+
+            // הצגת גודל הקובץ
             tvFileSize.setText(formatFileSize(attachment.size));
 
             // הגדרת אייקון לפי סוג קובץ
-            if (attachment.contentType != null) {
+            setFileIcon(attachment);
+
+            Log.d("AttachmentAdapter", "Bound attachment with name: " + displayName +
+                    ", size: " + formatFileSize(attachment.size));
+        }
+
+        private void setFileIcon(Attachment attachment) {
+            if (attachment.contentType != null && !attachment.contentType.isEmpty()) {
                 if (attachment.contentType.startsWith("image/")) {
                     ivFileIcon.setImageResource(android.R.drawable.ic_menu_gallery);
                 } else if (attachment.contentType.equals("application/pdf")) {
                     ivFileIcon.setImageResource(android.R.drawable.ic_menu_report_image);
                 } else if (attachment.contentType.startsWith("text/")) {
                     ivFileIcon.setImageResource(android.R.drawable.ic_menu_edit);
+                } else if (attachment.contentType.startsWith("video/")) {
+                    ivFileIcon.setImageResource(android.R.drawable.ic_menu_slideshow);
+                } else if (attachment.contentType.startsWith("audio/")) {
+                    ivFileIcon.setImageResource(android.R.drawable.ic_lock_silent_mode_off);
                 } else {
                     ivFileIcon.setImageResource(android.R.drawable.ic_menu_info_details);
                 }
             } else {
-                ivFileIcon.setImageResource(android.R.drawable.ic_menu_info_details);
+                // אם אין contentType, נסה לנחש לפי סיומת הקובץ
+                String filename = attachment.filename != null ? attachment.filename : attachment.path;
+                if (filename != null) {
+                    String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+                    switch (extension) {
+                        case "jpg":
+                        case "jpeg":
+                        case "png":
+                        case "gif":
+                        case "bmp":
+                            ivFileIcon.setImageResource(android.R.drawable.ic_menu_gallery);
+                            break;
+                        case "pdf":
+                            ivFileIcon.setImageResource(android.R.drawable.ic_menu_report_image);
+                            break;
+                        case "txt":
+                        case "doc":
+                        case "docx":
+                            ivFileIcon.setImageResource(android.R.drawable.ic_menu_edit);
+                            break;
+                        case "mp4":
+                        case "avi":
+                        case "mkv":
+                            ivFileIcon.setImageResource(android.R.drawable.ic_menu_slideshow);
+                            break;
+                        case "mp3":
+                        case "wav":
+                        case "flac":
+                            ivFileIcon.setImageResource(android.R.drawable.ic_lock_silent_mode_off);
+                            break;
+                        default:
+                            ivFileIcon.setImageResource(android.R.drawable.ic_menu_info_details);
+                    }
+                } else {
+                    ivFileIcon.setImageResource(android.R.drawable.ic_menu_info_details);
+                }
             }
         }
 
