@@ -8,7 +8,7 @@ const app = express();
 // MongoDB Connection
 const connectDB = async () => {
   try {
-  await mongoose.connect('mongodb://host.docker.internal:27017/gmail');
+    await mongoose.connect('mongodb://mongodb:27017/gmail');
     console.log('MongoDB connected successfully');
   } catch (error) {
     console.error('MongoDB connection error:', error);

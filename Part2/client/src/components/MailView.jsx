@@ -105,10 +105,9 @@ if (!fromId) {
       if (res.ok) {
         console.log("if (res.ok) {");
         console.log("mail.isRead2:", mail.isRead);
-        // const updatedMail = await res.json();
-        // console.log("updatedMail:", updatedMail);
-        // onUpdateMail?.(updatedMail);
-        // console.log("onUpdateMail?.(updatedMail);");
+        const updatedMail = { ...mail, isRead: true };
+        onUpdateMail?.(updatedMail); // עדכון המייל ב־state
+        
       } else {
         const errorText = await res.text();
         console.error(`Failed to mark mail as read: ${res.status} - ${errorText}`);
