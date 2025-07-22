@@ -29,39 +29,66 @@ All components operate in Docker containers, and the Android app connects direct
 
 ---
 
+## Features
+
+### General
+- Modular Android UI using Activities, Fragments, ViewModels, and LiveData
+- Light/Dark theme toggle with persistent user preferences
+- Single-Activity architecture with smooth navigation (no full app reloads)
+- Responsive layout optimized for various screen sizes (Gmail-style interface)
+
+### Authentication
+- Register & log in with comprehensive form validation on mobile
+- JWT-based session management with secure token storage (SharedPreferences)
+- Auth-protected screens with automatic redirect to login if unauthenticated
+- Profile management with image upload and preview using device gallery or camera
+
+### Email Management
+- **Compose & Send**: Rich text editor with file attachment support
+- **Read & Organize**: Mark as read/unread, star/unstar emails
+- **Categories**: Inbox, Sent, Drafts, Starred, Spam, Trash
+- **Delete Operations**: Soft delete (move to trash) and permanent deletion
+- **Restore**: Recover emails from trash to original location
+- **Pagination**: 50 emails per page with navigation controls
+- **Search**: Advanced search by subject, content, sender, date, recipient
+- **Reply & Forward**: Support for replying and forwarding emails with attachments
+- **Draft Management**: Auto-save to drafts when canceling compose
+
+### File Attachments
+- **Upload Support**: Multiple file attachments with progress tracking
+- **File Validation**: Size limits (10MB max) and type validation
+- **Attachment Management**: Remove/add attachments during compose
+- **Forward Attachments**: Preserve attachments when forwarding emails
+- **Download Support**: Download attachments from received emails
+
+### Labels System
+- Create, edit, and delete custom labels
+- Apply multiple labels to emails
+- Filter emails by labels
+- Bulk label operations
+- Color-coded label system
+
+### Spam Filtering
+- **Real-time Blacklist Check**: Integration with C++ blacklist server via TCP
+- **Automatic Spam Detection**: Emails with blacklisted URLs automatically marked as spam
+- **Manual Spam Management**: Users can mark emails as spam (adds URLs to blacklist)
+- **Spam Recovery**: Spam emails can be restored and URLs removed from blacklist
+- **Blacklist Persistence**: Blacklist data persists across server restarts
+
+### User Profile
+- Profile modal with editable fields (name, username, birth date, gender)
+- Profile image upload with preview and file validation
+- Account settings and preferences
+- Secure logout functionality
+
+---
+
 ## Running the System
 
 ### Step 1: Run Backend Services
-
-Run the backend servers and MongoDB using Docker Compose:
-
-```bash
-docker-compose up --build
-בטח! הנה הקובץ מסודר וברור, מוכן להעתקה — תוכל להשתמש בו ישירות ב־wiki:
-
----
-
-# Running the Full Email System with Android Client
-
-## Step 1: Run Backend Services with Docker Compose
-
-Start all backend components together using Docker Compose:
-
-* **C++ blacklist TCP server** (port 8080)
-* **Node.js API server** (port 4000)
-* **React frontend** (port 3000)
-* **MongoDB** (port 27017)
-
-Run this command in your project root:
-
 ```bash
 docker-compose up --build
 ```
-
-Ensure all containers start successfully before proceeding.
-
----
-
 ## Step 2: Run the Android Client
 
 * Open the Android project in **Android Studio** (this is **not** containerized; run locally).
@@ -86,57 +113,58 @@ Ensure all containers start successfully before proceeding.
 * Changes on one client instantly reflect on the other.
 * Supports simultaneous use on multiple devices or browsers.
 
----
+  ---
+### Security Considerations
+- JWT token validation through `authenticateToken.js` middleware
+- Uses hardcoded secret key `'secretkeyHHE'` for token verification
+- Bearer token authentication on protected routes with 401/403 error handling
+- Basic JWT signature verification to prevent token tampering
 
-## Android Client – Features and User Actions
 
-### Authentication
+## Project Structure
+```
+Project5/
+├── app/                             # Android Studio app source code
+│   └── src/
+│       ├── androidTest/             # Instrumented tests
+│       │   └── java/
+│       │       └── com.example.project5/
+│       ├── main/
+│       │   ├── java/                # Java/Kotlin source files
+│       │   │   └── com.example.project5/
+│       │   │       ├── model/       # Data models
+│       │   │       └── ui/          # UI components
+│       │   │           └── theme/   # Theme and style related files
+│       │   └── res/                 # Resources: layouts, drawables, colors, mipmaps, values, xml etc.
+│       └── test/                    # Unit tests
+│           └── java/
+│               └── com.example.project5/
+│
+├── gradle/                         # Gradle wrapper files
+│
+├── Part1/                         # Backend Services
+│   ├── project2/                  # C++ blacklist server
+│   │   ├── src/
+│   │   │   └── data/
+│   │   └── tests/
+│   └── project3/                  # Node.js API server
+│       ├── controllers/
+│       ├── middleware/            # Authentication middleware (e.g., JWT validation)
+│       ├── models/                # Database models
+│       ├── routes/                # API routes
+│       ├── services/              # Business logic services
+│       └── uploads/
+│           └── files/             # File storage for uploads
+│
+└── Part2/                         # Frontend Web Client
+└── client/
+├── public/                # Static assets for React frontend
+└── src/
+├── components/        # React components
+├── hooks/             # Custom React hooks
+└── styles/            # CSS stylesheets
 
-* Register new users with validation and optional profile image upload.
-* Log in and securely store JWT token for session management.
-* Log out clears session data and returns to login screen.
-
-### Email Management
-
-* View **Inbox**, **Sent**, **Drafts**, **Starred**, **Spam**, and **Trash** folders.
-* Open emails to read full content, attachments, and metadata.
-* Compose new emails with rich text and multiple attachments.
-* Reply, reply all, and forward emails with attachment preservation.
-* Mark emails as read/unread and star/unstar for importance.
-* Delete emails (soft delete to Trash or permanent delete).
-* Restore emails from Trash back to original folders.
-* Search emails by subject, content, sender, recipient, and date.
-* Pagination support for large mailboxes.
-
-### Labels System
-
-* Create, edit, and delete custom labels with colors.
-* Assign multiple labels to emails and filter by labels.
-* Bulk label operations on multiple selected emails.
-
-### Spam Filtering
-
-* Automatic spam detection via blacklist URLs (from C++ blacklist server).
-* Manually mark/unmark emails as spam, updating blacklist accordingly.
-
-### File Attachments
-
-* Upload multiple files with size/type validation during compose.
-* Remove attachments before sending.
-* Download attachments from received emails.
-
-### User Profile & Settings
-
-* View and edit profile information (name, username, birth date, gender).
-* Upload and preview profile image with validation.
-* Toggle light/dark theme with persistent preference.
-
-### Synchronization
-
-* All data synced with backend and visible on all logged-in clients.
-* Supports real-time updates and multi-device parallel usage.
-
----
+```
 
 ## Notes
 
