@@ -1,4 +1,4 @@
-# Advanced Email System – Project 5 Wiki
+# Advanced Email System – Project 5
 
 ## Overview
 
