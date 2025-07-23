@@ -160,10 +160,14 @@ public class MailListFragment extends Fragment {
                     boolean isSpamByContent = checkIfSpam(mail.subject, mail.body);
                     boolean hasBlacklistedLinks = SpamUtils.containsBlacklistedLinks(getContext(), mail.subject, mail.body);
 
-                    // if a mail is in the spam, make sure his urls are in the blacklist
                     if ("spam".equalsIgnoreCase(mail.category) && hasBlacklistedLinks) {
                         List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
                         SpamUtils.addLinksToBlacklist(getContext(), links);
+                    }
+
+                    else if (hasBlacklistedLinks && "inbox".equalsIgnoreCase(mail.category)) {
+                        moveMailToSpam(mail.id);
+                        mail.category = "spam";
                     }
 
                     allMails.add(mail);
@@ -228,11 +232,8 @@ public class MailListFragment extends Fragment {
     private void handleMailMovedFromSpam(String mailId) {
         Mail mail = findMailById(mailId);
         if (mail != null) {
-            List<String> links = SpamUtils.extractLinksFromText(mail.subject + " " + mail.body);
-            if (!links.isEmpty()) {
-                SpamUtils.removeLinksFromBlacklist(getContext(), links);
-                Log.d("MailListFragment", "Removed " + links.size() + " links from blacklist for mail: " + mailId);
-            }
+            // רק תעדכן שהמייל הזה הוצא מספאם - לא למחוק קישורים מהבלקליסט
+            Log.d("MailListFragment", "Mail moved from spam: " + mailId);
         }
     }
 
@@ -370,5 +371,31 @@ public class MailListFragment extends Fragment {
             case "starred": return "Starred";
             default: return key;
         }
+    }
+    private void moveMailToSpam(String mailId) {
+        new Thread(() -> {
+            try {
+                SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+
+                JSONObject json = new JSONObject();
+                json.put("category", "spam");
+
+                URL url = new URL("http://10.0.2.2:4000/api/mails/" + mailId);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("PATCH");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("Authorization", "Bearer " + token);
+                conn.setDoOutput(true);
+
+                conn.getOutputStream().write(json.toString().getBytes("UTF-8"));
+
+                int responseCode = conn.getResponseCode();
+                Log.d("MoveToSpam", "Response code: " + responseCode);
+
+            } catch (Exception e) {
+                Log.e("MoveToSpam", "Error moving mail to spam: " + e.getMessage());
+            }
+        }).start();
     }
 }
