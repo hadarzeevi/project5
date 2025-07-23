@@ -58,11 +58,8 @@ if (!fromId) {
           const errorText = await res.text();
           throw new Error(`Failed to fetch user: ${res.status} - ${errorText}`);
         }
-        console.log("res:", res);
-
         const data = await res.json();
         setUser(data);
-        console.log("Fetched user:", data);
       } catch (err) {
         console.error('Error fetching user:', err);
         setErrorUser(err.message);
@@ -73,21 +70,16 @@ if (!fromId) {
     }
 
     fetchUser();
-    console.log("Mail changed in MailView:", mail);
-    console.log("mail.isRead3:", mail.isRead);
 }, [mail]);
 
   useEffect(() => {
-  console.log("useEffect 2");
   if (!mail || !(mail.id || mail._id) || mail.isRead) {
-    console.log("if (!mail || !(mail.id || mail._id) || mail.isRead) {2");
      return;
   }
 
   const mailId = mail.id || mail._id;
 
   async function markMailAsRead() {
-    console.log("async function markMailAsRead() {");
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -100,15 +92,11 @@ if (!fromId) {
         },
         body: JSON.stringify({ isRead: true }),
       });
-      console.log("mail.isRead:", mail.isRead);
 
       if (res.ok) {
-        console.log("if (res.ok) {");
-        console.log("mail.isRead2:", mail.isRead);
-        // const updatedMail = await res.json();
-        // console.log("updatedMail:", updatedMail);
-        // onUpdateMail?.(updatedMail);
-        // console.log("onUpdateMail?.(updatedMail);");
+        const updatedMail = { ...mail, isRead: true };
+        onUpdateMail?.(updatedMail); // עדכון המייל ב־state
+        
       } else {
         const errorText = await res.text();
         console.error(`Failed to mark mail as read: ${res.status} - ${errorText}`);
@@ -119,19 +107,15 @@ if (!fromId) {
   }
 
   markMailAsRead();
-  console.log("markMailAsRead();");
-  console.log("mail.isRead4:", mail.isRead);
 }, [mail?.id, mail?._id, mail?.isRead]);
 
 
   const handleResend = () => {
-    console.log("const handleResend = () => {");
     setDraftToDeleteAfterSend(mail);
     setShowComposeModal(true);
   };
 
   async function handleMarkAsUnread(id) {
-    console.log("async function handleMarkAsUnread(id) {");
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
@@ -175,7 +159,6 @@ if (!fromId) {
   }
 
   const handleDownloadAttachment = (attachment) => {
-    console.log("const handleDownloadAttachment = (attachment) => {");
     try {
       if (attachment.data) {
         const byteCharacters = atob(attachment.data);
@@ -206,7 +189,6 @@ if (!fromId) {
   };
 
   const handlePreviewAttachment = (attachment) => {
-    console.log("const handlePreviewAttachment = (attachment) => {");
     try {
       if (attachment.data) {
         const byteCharacters = atob(attachment.data);
@@ -228,7 +210,6 @@ if (!fromId) {
   };
 
   const getFileIcon = (filename, contentType) => {
-    console.log("const getFileIcon = (filename, contentType) => {");
     const extension = filename?.split('.').pop()?.toLowerCase();
     const type = contentType?.toLowerCase();
 

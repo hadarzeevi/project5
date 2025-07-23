@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F9FAFB">
+    android:background="@color/background">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -55,7 +55,7 @@
         android:layout_margin="16dp"
         android:background="@drawable/compose_button_bg"
         android:text="@string/compose"
-        android:textColor="@color/blue"
+        android:textColor="@color/textPrimary"
         android:drawableStart="@drawable/ic_pencil"
         android:drawablePadding="8dp"
         android:padding="12dp"

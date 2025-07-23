@@ -63,6 +63,7 @@ public class MailDetailActivity extends AppCompatActivity {
 
             JSONObject json = new JSONObject(mailJson);
             mail = Mail.fromJson(json);
+            Log.d("MAIL_JSON", mailJson);
 
             if (mail == null) {
                 Toast.makeText(this, "שגיאה בפענוח נתוני המייל", Toast.LENGTH_SHORT).show();
@@ -72,6 +73,7 @@ public class MailDetailActivity extends AppCompatActivity {
 
             isSpamCategory = "spam".equalsIgnoreCase(mail.category);
             loadMailData();
+            fetchSenderDetailsAndSetImageFromMail(mail);
 
         } catch (JSONException e) {
             Toast.makeText(this, "שגיאה בפענוח נתוני המייל", Toast.LENGTH_SHORT).show();
@@ -102,6 +104,91 @@ public class MailDetailActivity extends AppCompatActivity {
         rvAttachments = findViewById(R.id.rvAttachments);
         tvAttachmentsTitle = findViewById(R.id.tvAttachmentsTitle);
     }
+    private void fetchSenderDetailsAndSetImageFromMail(Mail mail) {
+        // ננסה לחלץ את מזהה המשתמש מתוך mail.from – שיכול להיות או ID או JSON
+        String userId = null;
+
+        try {
+            if (mail.from != null && mail.from.trim().startsWith("{")) {
+                // mail.from הוא JSON כמחרוזת – נחלץ את ה־_id
+                JSONObject fromObj = new JSONObject(mail.from);
+                userId = fromObj.optString("_id", null);
+            } else {
+                // mail.from הוא פשוט מזהה ID
+                userId = mail.from;
+            }
+        } catch (Exception e) {
+            Log.e("MailDetail", "❌ Failed to parse mail.from", e);
+        }
+
+        if (userId == null || userId.isEmpty()) {
+            Log.e("MailDetail", "❌ userId is null or empty after parsing");
+            return;
+        }
+
+        String finalUserId = userId;
+        Log.d("MailDetail", "✅ Fetching sender image using userId: " + finalUserId);
+
+        new Thread(() -> {
+            try {
+                String urlStr = "http://10.0.2.2:4000/api/users/" + finalUserId;
+                Log.d("MailDetail", "🌐 Request URL: " + urlStr);
+
+                URL url = new URL(urlStr);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+
+                SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+                String token = prefs.getString("token", null);
+                if (token != null) {
+                    conn.setRequestProperty("Authorization", "Bearer " + token);
+                }
+
+                int responseCode = conn.getResponseCode();
+                Log.d("MailDetail", "📥 Response code: " + responseCode);
+
+                if (responseCode != 200) {
+                    Log.e("MailDetail", "❌ Failed to fetch user: response code " + responseCode);
+                    return;
+                }
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder json = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    json.append(line);
+                }
+                reader.close();
+
+                JSONObject userObj = new JSONObject(json.toString());
+                String profileImage = userObj.optString("profileImage", "");
+                Log.d("MailDetail", "🖼 profileImage path: " + profileImage);
+
+                if (profileImage != null && !profileImage.isEmpty()) {
+                    String imageUrl = profileImage.startsWith("http")
+                            ? profileImage
+                            : "http://10.0.2.2:4000/" + profileImage.replace("\\", "/");
+
+                    Log.d("MailDetail", "⬇️ Loading image from: " + imageUrl);
+
+                    runOnUiThread(() -> Glide.with(this)
+                            .load(imageUrl)
+                            .placeholder(R.drawable.ic_avatar)
+                            .error(R.drawable.ic_avatar)
+                            .circleCrop()
+                            .into(ivAvatar));
+                } else {
+                    Log.d("MailDetail", "⚠️ profileImage is empty – using default");
+                }
+
+            } catch (Exception e) {
+                Log.e("MailDetail", "❌ Error loading sender image: " + e.getMessage(), e);
+            }
+        }).start();
+    }
+
+
+
 
     private void setupClickListeners() {
         ivBack.setOnClickListener(v -> finish());
@@ -120,7 +207,6 @@ public class MailDetailActivity extends AppCompatActivity {
             mail.isStarred = !mail.isStarred;
             updateStarIcon();
             updateStarOnServer(mail.id, mail.isStarred);
-            Toast.makeText(this, mail.isStarred ? "סומן בכוכב" : "הוסר מכוכבים", Toast.LENGTH_SHORT).show();
         });
 
         btnReply.setOnClickListener(v -> {

@@ -1,6 +1,7 @@
 package com.example.project5.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -77,11 +78,17 @@ public class MailHomeActivity extends AppCompatActivity {
     }
 
     private void loadUserProfileImage(ImageView ivAvatar) {
-        String userProfileImage = getSharedPreferences("MyAppPrefs", MODE_PRIVATE)
-                .getString("profileImage", null);
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        String userProfileImage = prefs.getString("profileImage", null);
+
+        Log.d("Avatar", "Loaded profile image from prefs: " + userProfileImage);
 
         if (userProfileImage != null && !userProfileImage.isEmpty()) {
-            String url = "http://10.0.2.2:4000/" + userProfileImage.replace("\\", "/");
+            String url = userProfileImage.startsWith("http")
+                    ? userProfileImage
+                    : "http://10.0.2.2:4000/" + userProfileImage.replace("\\", "/");
+            Log.d("Avatar", "Loading image from URL: " + url);
+
             Glide.with(this)
                     .load(url)
                     .placeholder(R.drawable.ic_avatar)
@@ -89,6 +96,7 @@ public class MailHomeActivity extends AppCompatActivity {
                     .circleCrop()
                     .into(ivAvatar);
         } else {
+            Log.d("Avatar", "No profile image found, showing default.");
             ivAvatar.setImageResource(R.drawable.ic_avatar);
         }
     }
@@ -120,6 +128,13 @@ public class MailHomeActivity extends AppCompatActivity {
     }
     public MailListFragment getMailListFragment() {
         return mailListFragment;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        ImageView ivAvatar = findViewById(R.id.ivAvatar);
+        loadUserProfileImage(ivAvatar);
     }
 
 }

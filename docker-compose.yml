@@ -34,7 +34,19 @@ services:
       - nodeapp
     networks:
       - shared-net
+  mongo:
+    image: mongo:6.0
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - shared-net
 
 networks:
   shared-net:
     driver: bridge
+
+volumes:
+  mongo-data:

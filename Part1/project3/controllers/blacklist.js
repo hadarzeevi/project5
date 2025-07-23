@@ -39,7 +39,8 @@ exports.removeFromBlackList = async (req, res) => {
     }
 
     try {
-        const mail = Emails.getMail(id); 
+        //const mail = Emails.getMail(id); 
+        const mail = await Emails.findById(id); 
         if (!mail) {
             return res.status(404).json({ error: 'Mail not found' });
         }

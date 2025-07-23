@@ -6,7 +6,7 @@
     android:padding="24dp"
     android:orientation="vertical"
     android:gravity="center"
-    android:background="#FFFFFF">
+    android:background="@color/background">
 
     <ImageView
         android:id="@+id/logoImage"
@@ -34,14 +34,14 @@
         android:layout_marginTop="24dp" />
 
     <Button
-        android:id="@+id/nextButton"
+        android:id="@+id/btnNext"
         android:text="@string/next"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#182EE0"
-        android:textColor="#FFFFFF"
-        android:textSize="20sp"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="24dp"
+        android:backgroundTint="@color/primaryButton"
+        android:textColorHint="@color/textPrimary"
+        android:textColor="@color/textPrimary" />
 
     <EditText
         android:id="@+id/passwordEditText"
@@ -56,7 +56,7 @@
         android:id="@+id/tvError"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="#FF0000"
+        android:textColor="@color/error"
         android:textSize="14sp"
         android:visibility="gone"
         android:layout_marginTop="8dp"
@@ -76,15 +76,17 @@
         android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp" />
+        android:layout_marginTop="16dp"
+        android:backgroundTint="@color/primaryButton"
+        android:textColorHint="@color/textPrimary"
+        android:textColor="@color/textPrimary"/>
 
     <TextView
         android:id="@+id/registerText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/don_t_have_an_account_sign_up"
-        android:textColor="#1A73E8"
-        android:textSize="14sp"
+        android:backgroundTint="@color/primaryButton"        android:textSize="14sp"
         android:layout_marginTop="32dp"
         android:clickable="true"
         android:focusable="true" />

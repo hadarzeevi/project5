@@ -17,13 +17,7 @@ function MailItemWithUser({ mail, selectedMail, onSelect, darkMode,
   const [loadingUser, setLoadingUser] = useState(false);
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
 
-  console.log("MailView mail:", mail);
-
   useEffect(() => {
-    console.log("MailView useEffect activated. Mail ID:", mail?._id);
-    console.log("MailView mail:", mail);
-console.log("mail.from:", mail?.from);
-
     if (!mail || !mail.from) {
     setUser(null);
     return;

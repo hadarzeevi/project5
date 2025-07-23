@@ -32,7 +32,7 @@ public class LoginActivity extends AppCompatActivity {
 
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
-        nextButton = findViewById(R.id.nextButton);
+        nextButton = findViewById(R.id.btnNext);
         signInButton = findViewById(R.id.signInButton);
         showPasswordCheckbox = findViewById(R.id.showPasswordCheckbox);
         tvError = findViewById(R.id.tvError);

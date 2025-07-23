@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Project5" parent="Theme.AppCompat.Light.NoActionBar" />
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Project5" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- צבעים עיקריים -->
+        <item name="colorPrimary">@color/primaryButton</item>
+        <item name="colorPrimaryVariant">@color/primaryButton</item>
+        <item name="colorOnPrimary">@color/onPrimary</item>
+
+        <!-- רקעים וטקסט -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/textPrimary</item>
+
+        <item name="android:textColorPrimary">@color/textPrimary</item>
+        <item name="android:textColorSecondary">@color/textSecondary</item>
+
+        <!-- סטטוס בר -->
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimary</item>
+    </style>
 </resources>
