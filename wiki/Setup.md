@@ -141,5 +141,7 @@ You can now start testing authentication, sending emails, spam marking, and more
 ````
 
 ---
+<img width="1883" height="730" alt="צילום מסך 2025-07-23 181839" src="https://github.com/user-attachments/assets/c2b95760-68bc-47cb-ac07-5de933d73896" />
 
+<img width="1456" height="693" alt="צילום מסך 2025-07-23 181859" src="https://github.com/user-attachments/assets/6ed70b55-fd3c-4f81-9d3d-320ec55d2b0f" />
 
