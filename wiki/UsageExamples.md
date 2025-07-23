@@ -1,69 +1,50 @@
-# Usage Examples and Workflow
+# 🔐 Authentication – Register & Login
 
-## Login
+## 📝 Registration Process
 
-- Open browser at `http://localhost:3000`  
-- Register a new user or log in with existing credentials  
-- Access inbox and other folders  
-
----
-
-## Creating a New Email
-
-- Click the "Compose" button  
-- Enter recipient email, subject, and body  
-- Attach files if needed  
-- Send or save as draft  
+- The user fills out a registration form with username, email, password, and additional details  
+- Client-side validation is performed (in both React and Android apps)  
+- Data is sent to the server via `POST /api/users/register`  
+- Password is hashed before being stored in the database  
+- Upon success, the user is either redirected to the login screen or logged in automatically  
 
 ---
 
-## Editing an Existing Email
+## 🔑 Login Process
 
-- Select an email from the list  
-- Open email details (drafts can be edited)  
-- Modify content and save changes  
-
----
-
-## Marking Email as Spam
-
-- In the Inbox, select an email  
-- Click "Mark as Spam" button  
-- Email moves to Spam folder  
-- URLs from the email are added to blacklist  
+- The user enters their username and password  
+- Credentials are sent via `POST /api/users/login`  
+- On successful authentication, the server returns a JWT token  
+- The token is securely stored:
+  - In React: `localStorage`
+  - In Android: `SharedPreferences`  
+- All future API requests include the token in the `Authorization` header as:  
+  `Bearer <token>`
 
 ---
 
-## Restoring an Email from Spam
+## 🛡️ Route Protection
 
-- Go to the Spam folder  
-- Select an email  
-- Click "Restore"  
-- Email moves back to Inbox  
-- URLs removed from blacklist  
+- Protected routes are secured using the `authenticateToken.js` middleware  
+- If a token is invalid or missing, the server returns `401 Unauthorized`  
+- Unauthorized users are redirected to the login screen  
 
 ---
 
-## Deleting Emails
+## 👤 User Profile Management
 
-- Select emails in Inbox, Sent, Drafts, or Spam  
-- Delete to move them to Trash  
-- In Trash, delete permanently or restore  
-
----
-
-## Multi-Device Usage
-
-- Changes made on web client reflect immediately on Android app and vice versa  
-- Emails, labels, and profiles are synced in real time  
+- Users can update personal information and upload a profile picture  
+- The upload process includes image preview and file validation  
+- Changes are saved to the backend and persisted in the database  
 
 ---
 
-## Screenshots 
+## 🔒 Security Notes
 
-- Login screen  
-- Email list  
-- Compose email form  
-- Reading email  
-- Managing labels  
-- Spam management  
+- JWTs are signed using the secret key `'secretkeyHHE'`  
+- All protected endpoints validate the JWT on each request  
+- HTTPS is strongly recommended in production environments
+
+<img width="389" height="836" alt="צילום מסך 2025-07-23 181118" src="https://github.com/user-attachments/assets/fc90a970-f748-4bc0-a7a2-7e88d008ab8e" />
+<img width="355" height="817" alt="צילום מסך 2025-07-23 175433" src="https://github.com/user-attachments/assets/fd6a5be2-1599-4c3a-8af1-eb1c61442600" />
+<img width="318" height="570" alt="צילום מסך 2025-07-23 170631" src="https://github.com/user-attachments/assets/d09eb8f8-71e3-490a-827e-c5b1f63a2bca" />
