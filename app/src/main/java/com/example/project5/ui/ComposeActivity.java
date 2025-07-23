@@ -145,6 +145,10 @@ public class ComposeActivity extends Activity {
         }
 
         boolean isSpam = SpamUtils.isEmailBlacklisted(this, to);
+        boolean hasBlacklistedLinks = SpamUtils.containsBlacklistedLinks(this, subject, body);
+        if (hasBlacklistedLinks) {
+            isSpam = true;
+        }
 
         MultipartBody.Builder builder = new MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart("sendTo", to)
