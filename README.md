@@ -179,6 +179,9 @@ Project5/
 
 
 ---
+<img width="353" height="783" alt="צילום מסך 2025-07-23 213620" src="https://github.com/user-attachments/assets/baa4d89e-bad8-4482-8b58-c89a5ebf6f7e" />
+<img width="360" height="790" alt="צילום מסך 2025-07-23 213542" src="https://github.com/user-attachments/assets/7da91722-7171-4a58-b548-4977cbedb208" />
+
 ![PHOTO-2025-07-23-18-00-37](https://github.com/user-attachments/assets/1570f687-8d05-4987-bbd0-eebec4e58601)
 ![PHOTO-2025-07-23-18-00-33 (1)](https://github.com/user-attachments/assets/f49a34ea-e826-44f1-9340-b1296857eff1)
 ![PHOTO-2025-07-23-18-00-33](https://github.com/user-attachments/assets/09cbe73f-1f6d-4de1-a39f-f54c4455cbd0)
