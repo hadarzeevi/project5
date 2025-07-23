@@ -9,6 +9,16 @@
     <color name="onPrimary">#000000</color>       <!-- טקסט על כפתור בהיר -->
     <color name="error">#FF6F61</color>
     <color name="iconColor">#FFFFFF</color>
-    <!-- טקסט שגיאה -->
-</resources>
+    <color name="secondBackground">#2A2A2A</color> <!-- אפור כהה בהיר מהמעטפת -->
+    <color name="sidebarText">#DDDDDD</color> <!-- אפור בהיר (ל-Dark Mode) -->
 
+    <!-- השלמות מה-Light Mode -->
+    <color name="purple_500">#BB86FC</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#03DAC5</color>
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="grayDark">#888888</color>
+    <color name="selectedCategory">#3A3F47</color>
+</resources>

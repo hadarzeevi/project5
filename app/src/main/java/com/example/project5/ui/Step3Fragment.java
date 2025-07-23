@@ -1,6 +1,8 @@
 package com.example.project5.ui;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -21,12 +23,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 import okhttp3.*;
 
+import com.example.project5.utils.ProfileImageUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.project5.R;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -137,6 +143,7 @@ public class Step3Fragment extends Fragment {
 
         new Thread(() -> {
             try {
+                Log.d("Register", "Building registration form...");
                 MultipartBody.Builder builder = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
                         .addFormDataPart("first_name", parentActivity.firstName)
@@ -150,17 +157,21 @@ public class Step3Fragment extends Fragment {
 
                 byte[] imageBytes;
                 if (parentActivity.profileImageUri != null) {
+                    Log.d("Register", "Reading selected image...");
                     InputStream is = getContext().getContentResolver().openInputStream(parentActivity.profileImageUri);
                     imageBytes = readBytes(is);
                     is.close();
+                    Log.d("Register", "Selected image size: " + imageBytes.length);
                 } else {
+                    Log.d("Register", "Generating default profile image...");
                     String firstLetter = parentActivity.username != null && !parentActivity.username.isEmpty()
                             ? parentActivity.username.substring(0, 1)
                             : "U";
-                    Bitmap defaultBitmap = generateProfileBitmap(firstLetter);
+                    Bitmap bmp = ProfileImageUtils.generateProfileBitmap(firstLetter);
                     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    defaultBitmap.compress(Bitmap.CompressFormat.PNG, 100, bos);
+                    bmp.compress(Bitmap.CompressFormat.PNG, 100, bos);
                     imageBytes = bos.toByteArray();
+                    Log.d("Register", "Default image size: " + imageBytes.length);
                 }
 
                 builder.addFormDataPart(
@@ -176,10 +187,12 @@ public class Step3Fragment extends Fragment {
                         .post(requestBody)
                         .build();
 
+                Log.d("Register", "Sending POST request...");
+
                 client.newCall(request).enqueue(new Callback() {
                     @Override
                     public void onFailure(Call call, IOException e) {
-                        e.printStackTrace();
+                        Log.e("Register", "Network error: " + e.getMessage(), e);
                         requireActivity().runOnUiThread(() ->
                                 Toast.makeText(getContext(), "Network error: " + e.getMessage(), Toast.LENGTH_LONG).show()
                         );
@@ -188,13 +201,45 @@ public class Step3Fragment extends Fragment {
                     @Override
                     public void onResponse(Call call, Response response) throws IOException {
                         String resBody = response.body().string();
-                        Log.d("DEBUG", "Response: " + resBody);
+                        Log.d("Register", "Response body: " + resBody);
+                        Log.d("Register", "Response code: " + response.code());
+
                         if (response.isSuccessful()) {
-                            requireActivity().runOnUiThread(() -> {
-                                Toast.makeText(getContext(), "Registration successful!", Toast.LENGTH_SHORT).show();
+                            try {
+                                JSONObject json = new JSONObject(resBody);
+
+                                String userId = json.optString("userId");
+                                String token = json.optString("token");
+                                String profileImage = json.optString("profileImage");
+
+                                Log.d("Register", "userId: " + userId);
+                                Log.d("Register", "token: " + token);
+                                Log.d("Register", "profileImage: " + profileImage);
+
+                                SharedPreferences prefs = requireActivity().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+                                prefs.edit()
+                                        .putString("userId", userId)
+                                        .putString("token", token)
+                                        .putString("email", parentActivity.email)
+                                        .putString("username", parentActivity.username)
+                                        .putString("profileImage", profileImage)
+                                        .commit();
+
+                                Log.d("Register", "Saved to SharedPreferences, opening home screen...");
+
+                                Intent intent = new Intent(requireActivity(), MailHomeActivity.class);
+                                startActivity(intent);
                                 requireActivity().finish();
-                            });
+
+                            } catch (JSONException e) {
+                                Log.e("Register", "Error parsing JSON: " + e.getMessage(), e);
+                                requireActivity().runOnUiThread(() ->
+                                        Toast.makeText(getContext(), "Error parsing registration response", Toast.LENGTH_LONG).show()
+                                );
+                            }
+
                         } else {
+                            Log.e("Register", "Registration failed: " + resBody);
                             requireActivity().runOnUiThread(() ->
                                     Toast.makeText(getContext(), "Registration failed: " + resBody, Toast.LENGTH_LONG).show()
                             );
@@ -203,13 +248,14 @@ public class Step3Fragment extends Fragment {
                 });
 
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("Register", "Error building request: " + e.getMessage(), e);
                 requireActivity().runOnUiThread(() ->
                         Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_LONG).show()
                 );
             }
         }).start();
     }
+
     private byte[] readBytes(InputStream inputStream) throws IOException {
         ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
         int bufferSize = 4096;
@@ -250,31 +296,31 @@ public class Step3Fragment extends Fragment {
         tvError.setText(msg);
         tvError.setVisibility(View.VISIBLE);
     }
-    public Bitmap generateProfileBitmap(String letter) {
-        int size = 200;
-        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-
-        // random background color
-        int[] colors = {Color.parseColor("#f59e0b"), Color.parseColor("#10b981"),
-                Color.parseColor("#3b82f6"), Color.parseColor("#ec4899"),
-                Color.parseColor("#8b5cf6")};
-        int bgColor = colors[new Random().nextInt(colors.length)];
-        canvas.drawColor(bgColor);
-
-        // first letter
-        Paint paint = new Paint();
-        paint.setColor(Color.WHITE);
-        paint.setTextSize(100);
-        paint.setTextAlign(Paint.Align.CENTER);
-        paint.setTypeface(Typeface.DEFAULT_BOLD);
-        Paint.FontMetrics fontMetrics = paint.getFontMetrics();
-        float x = size / 2;
-        float y = size / 2 - (fontMetrics.ascent + fontMetrics.descent) / 2;
-        canvas.drawText(letter.toUpperCase(), x, y, paint);
-
-        return bitmap;
-    }
+//    public Bitmap generateProfileBitmap(String letter) {
+//        int size = 200;
+//        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+//        Canvas canvas = new Canvas(bitmap);
+//
+//        // random background color
+//        int[] colors = {Color.parseColor("#f59e0b"), Color.parseColor("#10b981"),
+//                Color.parseColor("#3b82f6"), Color.parseColor("#ec4899"),
+//                Color.parseColor("#8b5cf6")};
+//        int bgColor = colors[new Random().nextInt(colors.length)];
+//        canvas.drawColor(bgColor);
+//
+//        // first letter
+//        Paint paint = new Paint();
+//        paint.setColor(Color.WHITE);
+//        paint.setTextSize(100);
+//        paint.setTextAlign(Paint.Align.CENTER);
+//        paint.setTypeface(Typeface.DEFAULT_BOLD);
+//        Paint.FontMetrics fontMetrics = paint.getFontMetrics();
+//        float x = size / 2;
+//        float y = size / 2 - (fontMetrics.ascent + fontMetrics.descent) / 2;
+//        canvas.drawText(letter.toUpperCase(), x, y, paint);
+//
+//        return bitmap;
+//    }
     public InputStream bitmapToInputStream(Bitmap bitmap) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, bos);

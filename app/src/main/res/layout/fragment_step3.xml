@@ -103,7 +103,9 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:textColor="@color/textPrimary" />
+                android:backgroundTint="@color/primaryButton"
+                android:textColorHint="@color/textPrimary"
+                android:textColor="@color/textPrimary"/>
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

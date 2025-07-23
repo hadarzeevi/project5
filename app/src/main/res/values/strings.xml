@@ -28,6 +28,8 @@
     <string name="from">from:</string>
     <string name="subject">Subject</string>
     <string name="write_your_email">Write your email</string>
+    <string name="reply">reply</string>
+    <string name="forward">forward</string>
     <string-array name="gender_array">
         <item>Select Gender</item>
         <item>Male</item>

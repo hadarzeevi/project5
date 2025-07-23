@@ -29,7 +29,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="250dp"
-        android:background="@drawable/outline_button"
+        android:background="@drawable/outline_button_ripple"
         android:text="@string/sign_in"
         android:textColor="@color/primaryTextLink" />
+
 </LinearLayout>

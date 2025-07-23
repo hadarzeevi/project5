@@ -1,4 +1,7 @@
 const User = require('../models/users');
+const jwt = require('jsonwebtoken');
+const SECRET_KEY = 'secretkeyHHE';
+
 
 // Get a user by ID
 exports.getUser = async (req, res) => {
@@ -116,8 +119,18 @@ exports.addUser = async (req, res) => {
     });
 
     await newUser.save();
+    const token = jwt.sign({ userId: newUser._id }, SECRET_KEY, { expiresIn: '1h' });
 
-    res.status(201).json({ message: "User added successfully" });
+    const fullProfileImageUrl = profileImage.startsWith('http')
+      ? profileImage
+      : `${req.protocol}://${req.get('host')}/${profileImage}`;
+
+    res.status(201).json({
+      message: "User added successfully",
+      userId: newUser._id,
+      token,
+      profileImage: fullProfileImageUrl
+    });
   } catch (error) {
     console.error('Error adding user:', error);
     if (error.name === 'ValidationError') {
