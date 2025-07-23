@@ -1,4 +1,4 @@
-# Advanced Email System – Project 5
+# Project 5 - Advanced Email System
 
 ## Overview
 
@@ -91,7 +91,7 @@ docker-compose up --build
 ```
 ## Step 2: Run the Android Client
 
-* Open the Android project in **Android Studio** (this is **not** containerized; run locally).
+* Open the Android project in **Android Studio**.
 * Run the app on an emulator or physical device.
 * The Android app communicates with the Node.js API server running on localhost or your server IP.
 * Make sure the backend (Docker services) is running before starting the Android app.
@@ -179,5 +179,9 @@ Project5/
 
 
 ---
-
-אם תרצה אוכל גם לעזור להכין את קובץ ה-Wiki בפורמט markdown מלא, או כל דבר אחר!
+![PHOTO-2025-07-23-18-00-37](https://github.com/user-attachments/assets/1570f687-8d05-4987-bbd0-eebec4e58601)
+![PHOTO-2025-07-23-18-00-33 (1)](https://github.com/user-attachments/assets/f49a34ea-e826-44f1-9340-b1296857eff1)
+![PHOTO-2025-07-23-18-00-33](https://github.com/user-attachments/assets/09cbe73f-1f6d-4de1-a39f-f54c4455cbd0)
+![PHOTO-2025-07-23-18-00-32 (2)](https://github.com/user-attachments/assets/d2c09c68-22a9-4349-aa8f-1260eb614098)
+![PHOTO-2025-07-23-18-00-32](https://github.com/user-attachments/assets/f6845e4c-d09d-4413-b0a5-cefd5e7e80f5)
+![PHOTO-2025-07-23-18-00-32 (1)](https://github.com/user-attachments/assets/fd45ad7d-7f1f-4e9d-b098-df7835077070)
