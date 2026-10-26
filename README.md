@@ -1,4 +1,4 @@
-# Project 5 - Advanced Email System
+# Advanced Email System - Android
 
 ## Overview
 
